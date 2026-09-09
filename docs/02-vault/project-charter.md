@@ -1,71 +1,12 @@
-# Stakeholder Personas
+# Project Charter: AI Document & Knowledge Management System (AI KMS)
 
-Các persona/stakeholder chính và mục tiêu của họ.
-
-## Persona 1: Reader
-
-**Vai trò:** Reader - Người khai thác thông tin
-
-**Mô tả:** Nhân viên các phòng ban cần khai thác tài liệu quy trình, quy định, hướng dẫn của công ty để phục vụ công việc hàng ngày.
-
-### Mục tiêu & Kỳ vọng
-
-- Tìm kiếm thông tin chính xác, nhanh chóng mà không cần đọc hết các tài liệu dài hàng chục trang nhờ vào trợ lý AI.
-- Đảm bảo câu trả lời từ AI có trích dẫn nguồn (citation) rõ ràng để đối chiếu khi cần.
-- Chỉ tiếp cận các tài liệu trong phạm vi quyền hạn của mình một cách tự động, không mất thời gian gửi yêu cầu xin quyền thủ công.
-
-### Nỗi đau
-
-- Mất hàng giờ tìm kiếm file trong các thư mục lộn xộn hoặc phải đi hỏi đồng nghiệp.
-- Đọc nhầm tài liệu cũ/hết hạn dẫn đến áp dụng sai quy trình.
-
-## Persona 2: Author
-
-**Vai trò:** Author - Người biên soạn
-
-**Mô tả:** Chuyên viên quy trình, kỹ sư viết tài liệu kỹ thuật, hoặc nhân viên hành chính chịu trách nhiệm soạn thảo và cập nhật tài liệu nội bộ.
-
-### Mục tiêu & Kỳ vọng
-
-- Dễ dàng tạo mới, cập nhật tài liệu và tổ chức phân mục khoa học bằng Folder/Tag.
-- Gửi yêu cầu phê duyệt (Review) đến đúng người quản lý một cách tự động theo quy trình.
-- Quản lý các phiên bản (Version) tài liệu rõ ràng, dễ dàng khôi phục phiên bản cũ khi có lỗi phát sinh.
-
-### Nỗi đau
-
-- Khó khăn khi theo dõi các phản hồi, sửa đổi từ nhiều bên dẫn đến lỗi chồng chéo phiên bản.
-- Quy trình chuyển giao tài liệu từ nháp sang phê duyệt bị chậm trễ do trao đổi qua email/chat thủ công.
-
-## Persona 3: Reviewer
-
-**Vai trò:** Reviewer - Người kiểm duyệt & Quản lý
-
-**Mô tả:** Trưởng phòng, Quản lý dự án hoặc Giám đốc bộ phận - những người có chuyên môn và thẩm quyền phê duyệt nội dung trước khi ban hành.
-
-### Mục tiêu & Kỳ vọng
-
-- Có một danh sách tập trung các tài liệu đang chờ phê duyệt (Review queue) để duyệt nhanh chóng.
-- Dễ dàng phê duyệt (Approve) hoặc từ chối kèm lý do (Reject) trực tiếp trên hệ thống.
-- Kiểm soát việc phân quyền tiếp cận (Permission) ban đầu cho tài liệu trước khi xuất bản rộng rãi.
-
-### Nỗi đau
-
-- Quá tải tin nhắn/email nhắc nhở duyệt bài thủ công từ cấp dưới.
-- Vô tình xuất bản tài liệu chưa hoàn thiện hoặc chưa được kiểm chứng độ chính xác ra toàn công ty.
-
-## Persona 4: Admin
-
-**Vai trò:** Admin - Quản trị hệ thống & Bảo mật
-
-**Mô tả:** Nhân viên IT hoặc Quản trị viên hệ thống thông tin của doanh nghiệp.
-
-### Mục tiêu & Kỳ vọng
-
-- Cấu hình và kiểm soát phân quyền động (Role-based / Attribute-based Access Control) chặt chẽ cho toàn bộ hệ thống.
-- Đảm bảo hệ thống hỏi đáp AI (RAG) hoạt động an toàn, không hiển thị hoặc trả lời thông tin vượt quá quyền hạn của người hỏi (Permission-aware retrieval).
-- Giám sát hoạt động hệ thống thông qua nhật ký hoạt động (Audit log) để phát hiện sự cố rò rỉ dữ liệu.
-
-### Nỗi đau (Pain points)
-
-- Hệ thống RAG thông thường dễ làm lộ thông tin mật của ban giám đốc cho nhân viên thường khi truy vấn.
-- Không có công cụ truy vết khi xảy ra sự cố rò rỉ thông tin hoặc mất mát tài liệu quan trọng.
+| **Trường**            | **Nội dung**                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Project**           | **AI Document & Knowledge Management System (AI KMS)**                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| **Problem**           | Trong tổ chức, lượng **tài liệu** và **kiến thức** cần quản lý ngày càng lớn, đa dạng và phức tạp. Điều này khiến việc **tổ chức, tìm kiếm và xác định đúng thông tin** trở nên khó khăn. Khi sử dụng các mô hình **AI/LLM** để khai thác kiến thức nội bộ, AI có thể gặp hạn chế với kiến thức chuyên biệt hoặc thông tin thay đổi, dẫn đến câu trả lời thiếu chính xác nếu không được cung cấp và truy xuất đúng nguồn dữ liệu.                                                                                                                         |
+| **Primary users**     | <ul><li>**Author**: Tạo, cập nhật và gửi tài liệu để kiểm duyệt.</li><li>**Reviewer**: Kiểm tra, phê duyệt hoặc từ chối tài liệu.</li><li>**Reader**: Tìm kiếm, đọc và hỏi đáp với kho tri thức.</li><li>**Admin**: Quản lý người dùng, vai trò, quyền truy cập và hoạt động hệ thống.</li></ul>                                                                                                                                                                                                                                                          |
+| **Value proposition** | Xây dựng một **kho tri thức tập trung**, giúp người dùng **dễ dàng tìm kiếm và khai thác thông tin bằng AI**. AI hỗ trợ trả lời dựa trên các tài liệu trong kho và cung cấp **nguồn tham khảo**, giúp người dùng **tiết kiệm thời gian**, tiếp cận thông tin chính xác hơn và dễ dàng kiểm tra lại thông tin.                                                                                                                                                                                                                                             |
+| **MVP**               | <ul><li>Cho phép người dùng **tạo, chỉnh sửa và xem tài liệu theo quyền được cấp**.</li><li>Tổ chức tài liệu bằng **Folder/Tag** và quản lý theo quy trình **Create → Review → Publish → Version → Search/Ask**.</li><li>Hỗ trợ **tìm kiếm và hỏi AI**; AI chỉ sử dụng tài liệu người dùng được phép truy cập, trả lời dựa trên các tài liệu đó và ghi lại tài liệu được sử dụng để trả lời.</li><li>**Theo dõi lịch sử hoạt động** trên hệ thống.</li></ul>                                                                                              |
+| **Out of scope**      | <ul><li>**Trợ lý giọng nói**.</li><li>**Xác thực sinh trắc học**.</li><li>**Chỉnh sửa tài liệu thời gian thực**.</li><li>**Tìm kiếm Internet**.</li><li>**Tích hợp sâu với hệ thống bên ngoài**.</li><li>**Các tính năng AI nâng cao** trong MVP.</li></ul>                                                                                                                                                                                                                                                                                               |
+| **Success signals**   | <ul><li>**100% tài liệu được Publish phải qua Review**.</li><li>Người dùng chỉ có thể truy cập tài liệu phù hợp với **quyền được cấp**.</li><li>Hệ thống xác định rõ **phiên bản tài liệu đang được sử dụng chính thức**.</li><li>AI chỉ sử dụng các tài liệu mà người dùng được phép truy cập.</li><li>**Q&A benchmark đạt ≥80% accuracy**, không tính các câu trả lời đúng do đoán.</li><li>Các câu trả lời cần kiểm chứng phải **ghi lại tài liệu được sử dụng để trả lời**.</li><li>Các luồng nghiệp vụ cốt lõi của MVP hoàn thành **E2E**.</li></ul> |
+| **Constraints**       | <ul><li>Dự án được thực hiện trong **phạm vi thời gian và nguồn lực của môn học**.</li><li>MVP tập trung vào **nền tảng web** và sử dụng **dữ liệu được phép**.</li><li>Kết quả AI phụ thuộc vào **chất lượng nguồn tri thức**.</li><li>Thông tin chưa được xác nhận phải được **phân biệt rõ với các thông tin chính thức**.</li></ul>                                                                                                                                                                                                                   |
