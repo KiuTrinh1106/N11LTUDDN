@@ -1,0 +1,30 @@
+:root {
+  --color-primary: #205b8e;
+  --color-success: #2f6b4f;
+  --color-warning: #9a5b00;
+  --color-danger: #9b2c2c;
+  --color-surface: #ffffff;
+  --color-surface-muted: #f5f8fb;
+  --color-border: #d7e0e8;
+  --color-border-strong: #aebdca;
+  --color-text: #17212b;
+  --color-text-muted: #536273;
+  --color-on-primary: #ffffff;
+  --color-overlay: rgb(17 24 39 / 45%);
+  --shadow-overlay: 0 8px 24px rgb(17 24 39 / 18%);
+  --shadow-card: 0 8px 24px rgb(17 24 39 / 10%);
+  --radius-md: 12px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --focus-ring-width: 3px;
+  --focus-ring-offset: 2px;
+}
+
+:where(button, textarea, a):focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-primary);
+  outline-offset: var(--focus-ring-offset);
+}
