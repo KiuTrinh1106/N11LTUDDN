@@ -50,7 +50,7 @@ soát theo quyền của mình, để tôi không thể xem hoặc truy cập c�
 liệu nằm ngoài phạm vi được cấp quyền.**
 
 **Bối cảnh:\
-**Bao phủ REQ-FR-04, REQ-FR-16 và BR-02. Quyền xem tài liệu là điều kiện
+**Bao phủ REQ-FR-04, REQ-FR-16 và REQ-BR-02. Quyền xem tài liệu là điều kiện
 để người dùng có thể xem tài liệu và để tài liệu được sử dụng trong
 Search, Citation hoặc Q&A.
 
@@ -220,7 +220,7 @@ Reject tài liệu, để chỉ những tài liệu đã được kiểm tra m�
 tục đến bước Publish.**
 
 **Bối cảnh:\
-**Bao phủ REQ-FR-08, REQ-FR-09 và hỗ trợ BR-01. Review Queue tối thiểu
+**Bao phủ REQ-FR-08, REQ-FR-09 và hỗ trợ REQ-BR-01. Review Queue tối thiểu
 phải hiển thị Document, Version, Sender và Status của Review Request.
 
 **Tiêu chí chấp nhận:**
@@ -268,7 +268,7 @@ quyền; quy trình phê duyệt bên ngoài hệ thống.
 được Approve, để Version đó trở thành Version chính thức của tài liệu.**
 
 **Bối cảnh:\
-**Bao phủ REQ-FR-10 và hỗ trợ BR-01, BR-05. Chỉ Version đã được Reviewer
+**Bao phủ REQ-FR-10 và hỗ trợ REQ-BR-01, REQ-BR-05. Chỉ Version đã được Reviewer
 Approve mới được phép Publish.
 
 **Tiêu chí chấp nhận:**

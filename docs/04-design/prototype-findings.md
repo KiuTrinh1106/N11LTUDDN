@@ -124,7 +124,7 @@ Tình huống kiểm tra quyền: `Quy định lương thưởng` không đượ
 - Chỉ Reviewer hoặc Admin được Publish.
 - Chỉ version đã được Reviewer hoặc Admin Approve mới được Publish.
 - Không được Publish version chưa Approve hoặc đã bị Reject.
-- Khi nội dung được cập nhật, phải tạo version mới; version cũ không còn là version hiện hành nhưng được giữ theo retention.
+- Chỉ Publish bản Draft đã Approve mới tạo version chính thức tiếp theo; version cũ không còn là version hiện hành nhưng được giữ theo retention.
 - Search phải tuân thủ quyền truy cập hiện tại của người dùng.
 - AI chỉ được sử dụng tài liệu nội bộ mà Reader có quyền truy cập.
 - AI phải hiển thị và ghi lại document ID/version ID hoặc citation tương đương.

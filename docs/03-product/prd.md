@@ -1,6 +1,6 @@
 # PRD - AI Document & Knowledge Management System
 
-_Trạng thái: Draft_
+_Trạng thái: **current-state**_
 
 ## 1. Problem
 
@@ -64,22 +64,24 @@ Các tính năng dưới đây chỉ bao gồm những tính năng đã có Requ
 | Xem lịch sử version                   | Admin, Reviewer và Author xem lịch sử version; Reader chỉ xem version gần nhất.                                                                                                 | REQ-FR-17                        | Should                           |
 | Gợi ý Tag có xác nhận                 | Có thể gợi ý Tag dựa trên nội dung hoặc metadata, nhưng chỉ lưu sau khi người dùng xác nhận.                                                                                    | REQ-FR-18                        | Could                            |
 
-Các mục “Tìm kiếm nâng cao”, “So sánh các Version”, “Gợi ý tài liệu liên quan” và “Thống kê sử dụng” có trong Scope nhưng chưa có Requirement ID tương ứng trong Requirement Inventory. Chúng chưa được đưa vào bảng Functional Scope và cần được đặc tả trước khi cam kết triển khai.
-
 ## 6. Business Rules
 
-| ID    | Quy tắc nghiệp vụ                                                                                                                                                                                                                                                                                |
-| ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| BR-01 | Chỉ bản đã qua Review và được Reviewer hoặc Admin Approve mới được Publish. Chỉ Reviewer hoặc Admin được Publish; Author không được Publish. Publish tạo version chính thức tiếp theo và chuyển bản sang `Published`; bản bị Reject hoặc chưa Approve không được Publish. (REQ-FR-10, REQ-BR-01) |
-| BR-02 | Quyền xem tài liệu là điều kiện bắt buộc cho việc xuất hiện trong tìm kiếm, đọc nội dung, nhận citation và sử dụng tài liệu trong Q&A. (REQ-FR-04, REQ-FR-12, REQ-FR-14, REQ-FR-15, REQ-BR-02)                                                                                                   |
-| BR-03 | Bản Draft bị Reject được giữ để Author sửa trên cùng bản và gửi Review lại; Reject và Approve không tăng version chính thức. Chỉ Publish mới tạo version chính thức tiếp theo và đánh dấu version hiện hành. Version chính thức bị thay thế không được coi là version hiện hành. (REQ-FR-11)     |
-| BR-04 | Tại một thời điểm, mỗi tài liệu chỉ có một version hiện hành; version hiện hành là version được dùng cho Search/Q&A. (REQ-FR-11, REQ-BR-03, REQ-BR-05)                                                                                                                                           |
-| BR-05 | Q&A trong MVP chỉ khai thác kho tài liệu nội bộ được phép và không sử dụng nguồn Internet. (REQ-FR-13, REQ-FR-15, REQ-BR-04)                                                                                                                                                                     |
-| BR-06 | Hoạt động được định nghĩa là quan trọng phải có audit log gồm tài khoản, hành động, đối tượng, thời điểm và kết quả. Danh sách đầy đủ hoạt động quan trọng là UNKNOWN và phải được nhóm chốt trước nghiệm thu. (REQ-FR-16, REQ-NFR-05, REQ-ASM-04)                                               |
-| BR-07 | Version không hiện hành được lưu trong 1 năm kể từ khi bị thay thế rồi tự động xóa. Tác vụ retention chạy hằng ngày lúc 02:00 theo múi giờ hệ thống; version hiện hành luôn được giữ lại. (REQ-FR-11, REQ-BR-03, DEC-12)                                                                         |
-| BR-08 | Mọi nguồn dữ liệu chưa được xác nhận là được phép phải bị loại khỏi dữ liệu vận hành MVP. (REQ-CON-01)                                                                                                                                                                                           |
-| BR-09 | Bốn vai trò Reader, Author, Reviewer và Admin là tập vai trò tối thiểu để kiểm thử MVP. (REQ-ASM-01)                                                                                                                                                                                             |
-| BR-10 | Các luồng Create -> Review -> Publish -> Version -> Search/Ask và permission-aware retrieval phải hoàn tất kiểm thử E2E trước nghiệm thu MVP. (REQ-CON-02)                                                                                                                                       |
+| ID        | Quy tắc nghiệp vụ                                                                                                                                                                                                                                                                            |
+| --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| REQ-BR-01 | Chỉ bản đã qua Review và được Reviewer hoặc Admin Approve mới được Publish. Chỉ Reviewer hoặc Admin được Publish; Author không được Publish. Publish tạo version chính thức tiếp theo và chuyển bản sang `Published`; bản bị Reject hoặc chưa Approve không được Publish. (REQ-FR-10)        |
+| REQ-BR-02 | Quyền xem tài liệu là điều kiện bắt buộc cho việc xuất hiện trong tìm kiếm, đọc nội dung, nhận citation và sử dụng tài liệu trong Q&A. (REQ-FR-04, REQ-FR-12, REQ-FR-14, REQ-FR-15)                                                                                                          |
+| REQ-BR-03 | Bản Draft bị Reject được giữ để Author sửa trên cùng bản và gửi Review lại; Reject và Approve không tăng version chính thức. Chỉ Publish mới tạo version chính thức tiếp theo và đánh dấu version hiện hành. Version chính thức bị thay thế không được coi là version hiện hành. (REQ-FR-11) |
+| REQ-BR-04 | Q&A trong MVP chỉ khai thác kho tài liệu nội bộ được phép và không sử dụng nguồn Internet. (REQ-FR-13, REQ-FR-15)                                                                                                                                                                            |
+| REQ-BR-05 | Tại một thời điểm, mỗi tài liệu chỉ có một version hiện hành; version hiện hành là version được dùng cho Search/Q&A. (REQ-FR-11)                                                                                                                                                             |
+
+### Related controls and decisions
+
+- Audit log: `REQ-FR-16`, `REQ-NFR-05`, `REQ-ASM-04`.
+- Retention: `REQ-BR-03`, `DEC-12`.
+- Dữ liệu được phép: `REQ-CON-01`.
+- Tập vai trò kiểm thử: `REQ-ASM-01`.
+- Kiểm thử E2E: `REQ-CON-02`.
+- Quy tắc tăng version và định nghĩa version chính thức: `REQ-ASM-03`.
 
 ## 7. UX Principles
 
@@ -90,7 +92,7 @@ Các mục “Tìm kiếm nâng cao”, “So sánh các Version”, “Gợi ý
 - Citation phải hiển thị cùng câu trả lời AI và có thể truy lại tài liệu/version nguồn.
 - Không hiển thị tài liệu, trích đoạn hoặc citation ngoài quyền của người dùng, kể cả trong kết quả rỗng, lỗi hoặc màn hình trung gian.
 - Phân biệt rõ thông tin chính thức, version bị thay thế và thông tin chưa được xác nhận.
-- Khi AI không tìm thấy dữ liệu phù hợp trong kho được phép, nội dung phản hồi và trạng thái giao diện là **UNKNOWN**, cần được quyết định trước nghiệm thu.
+- Khi AI không tìm thấy dữ liệu phù hợp trong kho được phép, hệ thống phải trả lời: **“Không đủ dữ liệu hoặc không tìm thấy dữ liệu trong bộ tài liệu này.”** AI không được tự đoán hoặc sử dụng nguồn Internet.
 - Giao diện MVP tập trung vào nền tảng web và phải hỗ trợ hiển thị trạng thái, lỗi và kết quả truy vết của các luồng chính.
 
 ## 8. Metrics / Acceptance Signals
@@ -110,16 +112,15 @@ Số lượng, phạm vi, người phê duyệt và cách chấm bộ Q&A benchm
 
 ## 9. Risks
 
-| Rủi ro                                               | Tác động                                                         | Cách giảm thiểu                                                                                                                                                |
-| ---------------------------------------------------- | ---------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Lộ tài liệu trái quyền qua Search, citation hoặc Q&A | Vi phạm bảo mật và mất niềm tin vào hệ thống.                    | Áp dụng permission-aware retrieval ở cả Search và Q&A; kiểm thử ma trận User/Document/Permission cho 4 vai trò; mục tiêu vi phạm 0%.                           |
-| AI trả lời sai hoặc bịa khi nguồn không đủ           | Người dùng đưa ra quyết định dựa trên thông tin không chính xác. | Chỉ dùng kho nội bộ được phép, bắt buộc citation, đo benchmark >= 80% và chốt quy tắc phản hồi khi không tìm thấy dữ liệu.                                     |
-| Dùng nhầm version đã bị thay thế                     | Người dùng làm việc trên thông tin không còn chính thức.         | Đánh dấu một version hiện hành duy nhất, chặn version cũ khỏi Search/Q&A và kiểm thử sau khi Publish version mới.                                              |
-| Mô hình cấp quyền chưa được quyết định               | Không thể triển khai hoặc kiểm thử nhất quán quyền tài liệu.     | Chốt RBAC, ABAC hoặc mô hình kết hợp; chốt quy trình cấp, sửa và thu hồi quyền trước nghiệm thu.                                                               |
-| Audit log không đủ trường hoặc thiếu hoạt động       | Mất khả năng truy vết và khó điều tra sự cố.                     | Chốt danh sách “hoạt động quan trọng”, bắt buộc log tài khoản/hành động/đối tượng/thời điểm/kết quả và kiểm tra 100%.                                          |
-| Retention version thực thi sai                       | Mất dữ liệu cần giữ hoặc giữ dữ liệu quá hạn.                    | Chốt quy tắc tăng version, định nghĩa version chính thức, thời điểm thay thế và cơ chế tự động xóa; không xóa version hiện hành.                               |
-| Chất lượng nguồn tri thức không đủ                   | Q&A không đạt benchmark dù luồng kỹ thuật hoạt động.             | Chỉ nạp dữ liệu được phép, phân biệt thông tin chưa xác nhận và chuẩn bị benchmark cùng đáp án, nguồn chuẩn trước nghiệm thu.                                  |
-| Scope tăng do các mục Should/Could chưa có đặc tả    | Trễ tiến độ và giảm khả năng hoàn thành MVP.                     | Chỉ cam kết các tính năng đã có Requirement ID; đặc tả và truy vết riêng cho tìm kiếm nâng cao, so sánh version, gợi ý tài liệu liên quan và thống kê sử dụng. |
+| Rủi ro                                               | Tác động                                                         | Cách giảm thiểu                                                                                                                      |
+| ---------------------------------------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Lộ tài liệu trái quyền qua Search, citation hoặc Q&A | Vi phạm bảo mật và mất niềm tin vào hệ thống.                    | Áp dụng permission-aware retrieval ở cả Search và Q&A; kiểm thử ma trận User/Document/Permission cho 4 vai trò; mục tiêu vi phạm 0%. |
+| AI trả lời sai hoặc bịa khi nguồn không đủ           | Người dùng đưa ra quyết định dựa trên thông tin không chính xác. | Chỉ dùng kho nội bộ được phép, bắt buộc citation, đo benchmark >= 80% và chốt quy tắc phản hồi khi không tìm thấy dữ liệu.           |
+| Dùng nhầm version đã bị thay thế                     | Người dùng làm việc trên thông tin không còn chính thức.         | Đánh dấu một version hiện hành duy nhất, chặn version cũ khỏi Search/Q&A và kiểm thử sau khi Publish version mới.                    |
+| Mô hình cấp quyền chưa được quyết định               | Không thể triển khai hoặc kiểm thử nhất quán quyền tài liệu.     | Chốt RBAC, ABAC hoặc mô hình kết hợp; chốt quy trình cấp, sửa và thu hồi quyền trước nghiệm thu.                                     |
+| Audit log không đủ trường hoặc thiếu hoạt động       | Mất khả năng truy vết và khó điều tra sự cố.                     | Chốt danh sách “hoạt động quan trọng”, bắt buộc log tài khoản/hành động/đối tượng/thời điểm/kết quả và kiểm tra 100%.                |
+| Retention version thực thi sai                       | Mất dữ liệu cần giữ hoặc giữ dữ liệu quá hạn.                    | Chốt quy tắc tăng version, định nghĩa version chính thức, thời điểm thay thế và cơ chế tự động xóa; không xóa version hiện hành.     |
+| Chất lượng nguồn tri thức không đủ                   | Q&A không đạt benchmark dù luồng kỹ thuật hoạt động.             | Chỉ nạp dữ liệu được phép, phân biệt thông tin chưa xác nhận và chuẩn bị benchmark cùng đáp án, nguồn chuẩn trước nghiệm thu.        |
 
 ## 10. Release Slice
 
@@ -134,7 +135,7 @@ Số lượng, phạm vi, người phê duyệt và cách chấm bộ Q&A benchm
 
 ### MVP-2 - Must: Version, Search và AI Q&A
 
-- Tạo version mới khi cập nhật, xác định version hiện hành và áp dụng retention cho version không hiện hành: REQ-FR-11, REQ-BR-03, REQ-BR-05.
+- Chỉ Publish bản Draft đã Approve mới tạo version chính thức tiếp theo; xác định version hiện hành và áp dụng retention cho version không hiện hành: REQ-FR-11, REQ-BR-03, REQ-BR-05, REQ-ASM-03.
 - Tìm kiếm theo quyền được cấp: REQ-FR-12, REQ-BR-02.
 - Reader hỏi AI bằng văn bản; AI chỉ dùng tài liệu được phép, hiển thị và lưu citation document/version: REQ-FR-13, REQ-FR-14, REQ-FR-15, REQ-NFR-02, REQ-NFR-03, REQ-NFR-04.
 - Hoàn tất E2E các luồng cốt lõi trước nghiệm thu: REQ-CON-02.
@@ -142,21 +143,16 @@ Số lượng, phạm vi, người phê duyệt và cách chấm bộ Q&A benchm
 ### MVP-2 - Should: Khả năng truy vết mở rộng
 
 - Xem lịch sử các version theo quyền của Admin, Reviewer, Author và Reader: REQ-FR-17.
-- “Tìm kiếm nâng cao” và “So sánh các Version” thuộc Scope Should nhưng chưa có Requirement ID hoặc đặc tả hành vi; trạng thái phát hành là **UNKNOWN**, không cam kết trong bản nghiệm thu hiện tại.
 
 ### MVP-2 - Could: Hỗ trợ tổ chức tài liệu
 
 - Gợi ý Tag sau khi người dùng xác nhận: REQ-FR-18.
-- “Gợi ý tài liệu liên quan” và “Thống kê sử dụng” thuộc Scope Could nhưng chưa có Requirement ID; trạng thái phát hành là **UNKNOWN**.
 
 ### VERIFY - Self-check
 
 1. Có yêu cầu nào mâu thuẫn hoặc chưa thể viết test case không?
    - Chưa thấy mâu thuẫn trực tiếp giữa quyền xem/chỉnh sửa, điều kiện Publish, permission-aware retrieval và version hiện hành; các cặp yêu cầu trùng chủ đề nhưng một bên mô tả hành vi, một bên mô tả luật hoặc chỉ tiêu nghiệm thu.
    - Một số yêu cầu chưa thể viết test case hoàn chỉnh nếu chưa có quyết định bổ sung: mô hình và quy trình cấp quyền; phạm vi benchmark Q&A; danh sách hoạt động quan trọng; phản hồi khi AI không tìm thấy dữ liệu; cơ chế xác nhận.
-   - `Tìm kiếm nâng cao`, `So sánh các Version`, `Gợi ý tài liệu liên quan` và `Thống kê sử dụng` có trong Scope nhưng chưa có Requirement ID, nên chưa thể đưa vào Functional Scope với khả năng truy vết đầy đủ.
 
-2. Ba câu hỏi quan trọng nhất cần con người quyết định:
-   1. Mô hình quyền là RBAC, ABAC hay kết hợp; ai được cấp, sửa và thu hồi quyền tài liệu, và mỗi vai trò được phép thao tác cụ thể nào?
-   2. Bộ benchmark Q&A gồm bao nhiêu câu, ai phê duyệt đáp án và nguồn chuẩn, thế nào là câu trả lời do đoán, và AI phải phản hồi ra sao khi không tìm thấy thông tin được phép?
-   3. Danh sách hoạt động quan trọng và cơ chế xác nhận cho các thao tác nhạy cảm gồm những gì?
+2. Câu hỏi quan trọng nhất cần con người quyết định:
+   1. Bộ benchmark Q&A gồm bao nhiêu câu, ai phê duyệt đáp án và nguồn chuẩn, thế nào là câu trả lời do đoán, và AI phải phản hồi ra sao khi không tìm thấy thông tin được phép? 15 câu do con người phê duyệt đáp án, nguồn chuẩn tự trích dẫn. câu trả lời do đoán là câu trả lời không đúng/ hiểu sai về tài liệu. Không tìm thấy thì cảnh báo chưa đủ dữ liệu để trả lời.
