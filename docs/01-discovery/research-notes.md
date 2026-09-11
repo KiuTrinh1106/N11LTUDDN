@@ -16,7 +16,8 @@ P02 – Sinh viên: Bạn của thành viên nhóm, đang học tại trường 
 
 → Insight: Người dùng có thể mất thời gian khi thông tin cần tìm nằm ở nhiều nguồn hoặc không biết chính xác tài liệu cần tìm ở đâu.
 
-##  Persona 2: Người biên soạn tài liệu (Author)
+## Persona 2: Người biên soạn tài liệu (Author)
+
 Đối tượng: Nhân viên/chuyên viên chịu trách nhiệm tạo, chỉnh sửa và cập nhật tài liệu.
 
 Bối cảnh thực tế:
@@ -37,6 +38,7 @@ Evidence: Secondary evidence – Representative case study, Intelligex, 09/08/20
 Insight: Author cần một nơi tập trung để tạo, cập nhật và theo dõi tài liệu, giảm quản lý thủ công và nhầm lẫn phiên bản.
 
 ## Persona 3: Người kiểm duyệt tài liệu (Reviewer)
+
 Đối tượng: Quản lý, trưởng bộ phận hoặc người chịu trách nhiệm kiểm tra và phê duyệt tài liệu.
 
 Bối cảnh thực tế:
@@ -55,7 +57,6 @@ Approve/Reject và theo dõi trạng thái rõ ràng.
 Evidence: Secondary evidence – Case study, Mobyte, 2026.
 
 Insight: Reviewer cần một quy trình tập trung để theo dõi tài liệu, người phụ trách, trạng thái Review và lịch sử phê duyệt.
-
 
 <!-- # Customer Brief
 
@@ -114,4 +115,4 @@ Mỗi tài liệu (Document) chứa các thông tin:
 
 ## Quy mô dự kiến
 
-Hệ thống ban đầu dự kiến sẽ phục vụ khoảng 500 nhân viên và quản lý khoảng 1.000 tài liệu nội bộ. -->
+Hệ thống ban đầu dự kiến sẽ phục vụ khoảng 10 người dùng và quản lý khoảng 100 tài liệu nội bộ.
