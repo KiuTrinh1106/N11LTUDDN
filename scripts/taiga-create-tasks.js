@@ -2,7 +2,7 @@
  * Create and assign the tasks from docs/03-product/taiga.md in Taiga.
  * Requires Node.js 18+ for the built-in fetch API.
  */
-
+/*
 const fs = require("node:fs/promises");
 
 const TAIGA_URL = (process.env.TAIGA_URL || "https://api.taiga.io").replace(
@@ -218,3 +218,4 @@ main().catch((error) => {
   console.error(error.message);
   process.exitCode = 1;
 });
+ */

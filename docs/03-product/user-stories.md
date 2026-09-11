@@ -5,7 +5,7 @@ người dùng, để người dùng chỉ có thể thực hiện các chức n
 tài liệu trong phạm vi quyền được cấp.**
 
 **Bối cảnh:\
-**Bao phủ REQ-FR-01 và ASM-01. Hệ thống có tối thiểu 4 vai trò: Reader,
+**Bao phủ REQ-FR-01 và REQ-ASM-01. Hệ thống có tối thiểu 4 vai trò: Reader,
 Author, Reviewer và Admin. Mô hình phân quyền cụ thể vẫn **TBD**.
 
 **Tiêu chí chấp nhận:**

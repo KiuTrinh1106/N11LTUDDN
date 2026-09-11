@@ -44,7 +44,7 @@ Story này kiểm chứng trực tiếp các nguyên tắc kiến trúc quan tr�
 - Search nâng cao, ranking và recommendation.
 - Streaming answer, multi-agent và tool ngoài allowlist.
 - Internet retrieval.
-- So sánh version và retention job.
+- Retention job.
 
 Các dependency bị rút gọn bằng fixture/seed hợp lệ; việc rút gọn không được bỏ qua kiểm tra quyền ở Backend.
 
