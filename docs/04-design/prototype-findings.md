@@ -32,12 +32,12 @@ Kiểm chứng ba flow có rủi ro cao của AI Knowledge Management System:
 
 ## 3. Personas
 
-| Persona  | Mục tiêu trong prototype                                                                                                |
-| -------- | ----------------------------------------------------------------------------------------------------------------------- |
-| Author   | Tạo, chỉnh sửa, tổ chức và gửi tài liệu vào Review. Không được Approve hoặc Publish.                                    |
-| Reviewer | Xem Review queue, kiểm tra version, Approve/Reject và Publish version đã Approve.                                       |
-| Admin    | Có quyền Review và Publish theo quyết định nghiệp vụ của prototype; các quyền Admin khác là UNKNOWN nếu chưa có đặc tả. |
-| Reader   | Search, mở tài liệu được phép và Ask AI bằng câu hỏi văn bản.                                                           |
+| Persona  | Mục tiêu trong prototype                                                                         |
+| -------- | ------------------------------------------------------------------------------------------------ |
+| Author   | Tạo, chỉnh sửa, tổ chức và gửi tài liệu vào Review. Không được Approve hoặc Publish.             |
+| Reviewer | Xem Review queue, kiểm tra version, Approve/Reject và Publish version đã Approve.                |
+| Admin    | Có quyền Review, Approve, Reject và Publish; các quyền Admin khác là UNKNOWN nếu chưa có đặc tả. |
+| Reader   | Search, mở tài liệu được phép và Ask AI bằng câu hỏi văn bản.                                    |
 
 ## 4. Flow Details
 
@@ -58,27 +58,27 @@ Kiểm chứng ba flow có rủi ro cao của AI Knowledge Management System:
 
 1. Reviewer hoặc Admin mở Review queue.
 2. Người xử lý chọn tài liệu và xem chi tiết nội dung, Folder, Tag, version, Author và trạng thái.
-3. Người xử lý chọn `Approve` hoặc `Reject`.
+3. Người xử lý chọn `Approve` hoặc `Reject`. Người xử lý có thể là Reviewer hoặc Admin.
 4. Prototype lưu người xử lý, thời điểm và kết quả Review.
 
 **Nhánh Approve:**
 
 1. Prototype hiển thị confirmation.
-2. Sau khi Approve, chỉ Reviewer hoặc Admin mới được chọn `Publish`.
+2. Sau khi Reviewer hoặc Admin Approve, chỉ Reviewer hoặc Admin mới được chọn `Publish`.
 3. Prototype từ chối thao tác Publish của Author và mọi version chưa được Approve.
 4. Sau khi Publish, version được đánh dấu là version hiện hành và tài liệu hiển thị trạng thái `Published`.
 
 **Nhánh Reject:**
 
-1. Người xử lý nhập lý do Reject nếu prototype cần kiểm chứng việc hiển thị lý do.
+1. Prototype có thể hiển thị trường nhập lý do Reject để kiểm chứng UX; việc bắt buộc lý do Reject trong hệ thống thật chưa được đặc tả.
 2. Prototype hiển thị confirmation và lưu kết quả Reject.
 3. Version bị Reject không được Publish.
-4. Việc Author có thể chỉnh sửa trực tiếp version bị Reject hay phải tạo version mới là **UNKNOWN**, cần nhóm quyết định trước khi biến thành hành vi chính thức.
+4. Version bị Reject được giữ nguyên. Khi Author chỉnh sửa, prototype tạo version mới để gửi Review lại; version bị Reject không được sửa trực tiếp hoặc Publish.
 
 **Tình huống version tiếp theo:**
 
 1. Author chỉnh sửa nội dung khi có quyền.
-2. Hệ thống tạo version mới.
+2. Nếu nội dung đang chỉnh sửa bắt nguồn từ version bị Reject, hệ thống tạo version mới và giữ nguyên version bị Reject.
 3. Version mới phải đi lại qua Review trước khi Publish.
 4. Version cũ được giữ theo chính sách retention: 1 năm kể từ khi bị thay thế, sau đó tự động xóa; version hiện hành không bị xóa bởi chính sách này.
 
@@ -95,15 +95,15 @@ Kiểm chứng ba flow có rủi ro cao của AI Knowledge Management System:
 7. Prototype hiển thị câu trả lời cùng document ID/version ID hoặc citation tương đương.
 8. Nếu không tìm thấy dữ liệu phù hợp trong các tài liệu được phép, AI phải trả lời rõ: `Không đủ dữ liệu hoặc không tìm thấy dữ liệu trong bộ tài liệu này.` AI không được tự suy đoán hoặc dùng nguồn Internet.
 
-Tình huống kiểm tra quyền: `Quy định lương thưởng` không được xuất hiện trong kết quả Search, tên tài liệu, metadata, citation hoặc câu trả lời nếu Reader A không có quyền truy cập. Giao diện có thể hiển thị `Không tìm thấy kết quả phù hợp` hoặc `Không có quyền truy cập` nhưng không được tiết lộ thông tin nhạy cảm của tài liệu.
+Tình huống kiểm tra quyền: `Quy định lương thưởng` không được xuất hiện trong kết quả Search, tên tài liệu, metadata, citation hoặc câu trả lời nếu Reader A không có quyền truy cập. Với Search, giao diện hiển thị `Không tìm thấy kết quả phù hợp`. Nếu Reader cố mở một tài nguyên đã biết nhưng không có quyền, giao diện có thể hiển thị `Access blocked` nhưng không được tiết lộ tên hoặc metadata nhạy cảm của tài liệu.
 
 ## 5. Required States
 
-| Flow   | States cần prototype kiểm chứng                                                                                                   |
-| ------ | --------------------------------------------------------------------------------------------------------------------------------- |
-| Flow A | Default, Loading, Error, Confirmation, Success, Draft, Reviewing/Pending Review                                                   |
-| Flow B | Default, Loading, Empty, Error, Confirmation, Success, Reviewing/Pending Review, Approved, Rejected, Published, Permission denied |
-| Flow C | Default, Loading, Error, No result, Permission denied, AI processing, AI answer, Insufficient data                                |
+| Flow   | States cần prototype kiểm chứng                                                                                                                         |
+| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Flow A | Default, Loading, Error, Confirmation, Success, Draft, Reviewing/Pending Review                                                                         |
+| Flow B | Default, Loading, Empty, Error, Confirmation, Success, Reviewing/Pending Review, Approved, Rejected, Published, Access blocked (Author bị chặn Publish) |
+| Flow C | Default, Loading, Error, No result, Access blocked (chỉ khi mở tài nguyên đã biết), AI processing, AI answer, Insufficient data                         |
 
 ## 6. Sample Data
 
@@ -141,16 +141,16 @@ Các mục dưới đây chỉ là giả định phục vụ prototype, không p
 - Folder và Tag được tạo sẵn để giảm phạm vi setup của prototype.
 - Các thao tác Create, Review, Publish và Version được mô phỏng; chưa cần triển khai đầy đủ logic backend.
 - Câu trả lời AI và citation được mô phỏng bằng dữ liệu mẫu để kiểm chứng cách hiển thị.
-- Confirmation là trạng thái giao diện dùng để kiểm chứng trải nghiệm; cách xác nhận trong backend là UNKNOWN.
-- Prototype có thể mô phỏng việc chặn Publish của Author, nhưng quyền này phải được đồng bộ vào Requirement/Business Rules chính thức trước khi triển khai.
+- Confirmation là trạng thái giao diện dùng để kiểm chứng trải nghiệm; cách xác nhận trong backend chưa thuộc phạm vi prototype.
+- Prototype mô phỏng việc chặn Publish của Author theo quyết định nghiệp vụ đã chốt.
+- Prototype có thể dùng version ban đầu `v1.0` và dữ liệu Folder/Tag cố định trong sample data.
+- Prototype mô phỏng câu trả lời AI, citation và trạng thái `Insufficient data`; chưa cần triển khai RAG/LLM thực tế.
 
 ## 9. Open Questions
 
-1. Sau khi Reject, Author chỉnh sửa cùng version hay hệ thống tạo version mới?
-2. Admin có được Approve hay chỉ được Publish sau khi Reviewer Approve?
-3. Khi nào version tăng: lúc sửa, lúc gửi Review hay lúc Publish?
-4. Hệ thống chạy tác vụ tự động xóa version hết hạn vào thời điểm nào?
-5. Với câu hỏi không đủ dữ liệu, dùng chính xác một thông báo cố định hay cho phép các biến thể tương đương?
+1. Khi nào version tăng: lúc sửa, lúc gửi Review hay lúc Publish?
+2. Hệ thống chạy tác vụ tự động xóa version hết hạn vào thời điểm nào?
+3. Việc bắt buộc nhập lý do Reject có phải là yêu cầu chính thức hay chỉ là lựa chọn UX?
 
 ## 10. Prototype Findings
 
