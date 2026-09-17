@@ -1,4 +1,4 @@
-# Phân công task Taiga
+# Phân công task dự án
 
 ## Nguyên tắc
 
@@ -18,4 +18,4 @@
 - Trinh: `T-205`, `T-209`, `T-307`, `T-408`, `T-508`.
 - Thơ: `T-705`.
 
-Script [taiga-create-tasks.js](../../scripts/taiga-create-tasks.js) đọc trực tiếp task từ `taiga.md`, áp dụng mapping trên, tìm User Story và thành viên tương ứng trong Taiga, sau đó tạo và gán task. Các task đã tồn tại với cùng tiêu đề sẽ được bỏ qua để có thể chạy lại an toàn.
+Bản phân công này dùng làm tài liệu nội bộ cho dự án và không phụ thuộc vào bất kỳ hệ thống quản lý backlog bên ngoài nào.

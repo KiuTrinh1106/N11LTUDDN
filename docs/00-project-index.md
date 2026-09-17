@@ -33,7 +33,6 @@
 | User Stories List                      | `user-stories.md` (US-01 đến US-12)       | [Mở artifact](03-product/user-stories.md)                                                             |
 | Task Assignment                        | `task-assignment.md`                      | [Mở artifact](03-product/task-assignment.md)                                                          |
 | Vertical Slice                         | `vertical-slice.md`                       | [Mở artifact](03-product/vertical-slice.md)                                                           |
-| Taiga Backlog & Task Board             | `taiga.md`                                | [Mở artifact](03-product/taiga.md)                                                                    |
 | Prototype Brief & Usability Findings   | `prototype-findings.md`                   | [Mở artifact](04-design/prototype-findings.md)                                                        |
 | Design Foundation                      | `foundation.md`                           | [Mở artifact](04-design/foundation.md)                                                                |
 | Design System & Components             | `DESIGN.md`, `components.md`              | [DESIGN](04-design/DESIGN.md) · [Components](04-design/components.md)                                 |
@@ -74,6 +73,6 @@
 ### Kiểm tra độ bao phủ artifact
 
 - **Bài 1**: Đã liên kết Charter, Research, Requirements, Scope, Source Priority, Q&A Benchmark, Glossary và Open Questions.
-- **Bài 2**: Đã liên kết PRD, Epics, User Stories, Task Assignment, Vertical Slice, Taiga, Prototype, Design System, Flow, States, Screen Inventory và Handoff.
+- **Bài 2**: Đã liên kết PRD, Epics, User Stories, Task Assignment, Vertical Slice, Prototype, Design System, Flow, States, Screen Inventory và Handoff.
 - **Bài cuối**: Đã liên kết Architecture, Data Model/Schema, API, ADRs, Test Strategy/Cases, Bug Report, Release Checklist, Runbook, Release Notes, AI Log, Traceability Matrix và Retrospective.
 - Các URL chưa có artifact thật được đánh dấu **Placeholder** để cập nhật sau khi nhóm có link chính thức.
