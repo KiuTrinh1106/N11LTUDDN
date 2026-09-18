@@ -1,0 +1,28 @@
+{
+  "inputs": [
+    {
+      "type": "promptString",
+      "id": "taigaUsername",
+      "description": "Taiga username or email",
+      "password": false
+    },
+    {
+      "type": "promptString",
+      "id": "taigaPassword",
+      "description": "Taiga password",
+      "password": true
+    }
+  ],
+  "servers": {
+    "taiga": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "mcp-taiga"],
+      "env": {
+        "TAIGA_USERNAME": "${input:taigaUsername}",
+        "TAIGA_PASSWORD": "${input:taigaPassword}",
+        "TAIGA_API_URL": "https://api.taiga.io/api/v1"
+      }
+    }
+  }
+}

@@ -19,3 +19,14 @@
 - Thơ: `T-705`.
 
 Bản phân công này dùng làm tài liệu nội bộ cho dự án và không phụ thuộc vào bất kỳ hệ thống quản lý backlog bên ngoài nào.
+
+## Taiga Backlog v1
+
+Backlog thực tế đã được tạo trong project `kiutrinh1106-ai-document-knowledge-management-system`.
+
+- 7 Epic, 12 User Story và 77 Task.
+- Mỗi User Story có Epic, estimate, acceptance criteria và Definition of Ready trong Taiga.
+- Mỗi Task có đúng một parent User Story, status `New`, owner, estimate trong mô tả và artifact link.
+- Owner Taiga: `kiutrinh1106` là Trinh; `phamthianhtho` là Thơ.
+- Các task bổ sung cho phạm vi đầy đủ: `T-801..T-806` cho AI, `T-901..T-904` cho Citation và `T-1001..T-1002` cho Audit.
+- Trace end-to-end và artifact index: `docs/06-technical/TRACEABILITY.md`.
