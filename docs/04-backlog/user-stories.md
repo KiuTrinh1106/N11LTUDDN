@@ -27,11 +27,8 @@ Cho:** Người dùng không có quyền thực hiện một chức năng\
 **Khi:** Người dùng cố gắng thực hiện chức năng đó\
 **Thì:** Hệ thống phải ngăn hành động này.
 
-**AC4\
-Cho:** Mô hình phân quyền cụ thể chưa được thống nhất\
-**Khi:** Hệ thống triển khai cơ chế phân quyền\
-**Thì:** Không được tự giả định sử dụng RBAC, ABAC hoặc mô hình kết hợp
-nếu chưa được phê duyệt.
+**AC4 là constraint:** Mô hình RBAC, ABAC hoặc kết hợp phải được nhóm phê
+duyệt trước khi triển khai; story này không tự giả định mô hình.
 
 **Ngoài phạm vi:\
 **Xác định mô hình RBAC/ABAC/kết hợp; quy tắc cấp và thu hồi quyền chi
@@ -39,7 +36,79 @@ tiết; tích hợp hệ thống đăng nhập bên ngoài.
 
 **Phụ thuộc:\
 **Quản lý tài khoản người dùng; quyết định về mô hình phân quyền;
-REQ-FR-16.
+REQ-FR-01 và REQ-ASM-01.
+
+**Ước lượng:** 3 điểm
+
+# **US-AI-09 - Tìm kiếm tài liệu theo quyền**
+
+**Với vai trò là Reader, tôi muốn tìm kiếm trong kho tài liệu được phép,
+để tìm đúng thông tin mà không nhìn thấy tài liệu trái quyền.**
+
+**Bối cảnh:** Bao phủ REQ-FR-12, REQ-BR-02 và Discovery Theme 1.
+
+**Tiêu chí chấp nhận:**
+
+- Reader có quyền xem Document X tìm thấy và mở được Document X.
+- Reader không có quyền xem Document Y không thấy Y, nội dung hoặc metadata nhạy cảm của Y trong Search và truy cập trực tiếp.
+- Search hiển thị Loading, Error hoặc Retry phù hợp mà không làm lộ dữ liệu.
+
+**Ngoài phạm vi:** Tìm kiếm Internet, ranking nâng cao và recommendation.
+
+**Phụ thuộc:** US-AI-01, US-AI-02, Document và Permission.
+
+**Ước lượng:** 3 điểm
+
+# **US-AI-10 - Hỏi AI về tài liệu được phép**
+
+**Với vai trò là Reader, tôi muốn hỏi AI bằng văn bản về tài liệu được phép,
+để nhận câu trả lời dựa trên nguồn nội bộ có thể kiểm chứng.**
+
+**Bối cảnh:** Bao phủ REQ-FR-13, REQ-FR-15 và REQ-BR-04.
+
+**Tiêu chí chấp nhận:**
+
+- Reader có quyền xem Document X nhận câu trả lời dựa trên current version của X.
+- Document Y ngoài quyền không được dùng trong context, answer hoặc citation.
+- Khi nguồn được phép không đủ dữ liệu, hệ thống trả “Không đủ dữ liệu hoặc không tìm thấy dữ liệu trong bộ tài liệu này.”, không suy đoán và không dùng Internet.
+
+**Ngoài phạm vi:** Voice assistant, Internet retrieval và AI tự động phê duyệt.
+
+**Phụ thuộc:** US-AI-02, US-AI-09, current DocumentVersion và Assistant Orchestrator.
+
+**Ước lượng:** 5 điểm
+
+# **US-AI-11 - Hiển thị và lưu citation**
+
+**Với vai trò là Reader, tôi muốn xem document ID và version ID của nguồn trả lời,
+để kiểm tra lại thông tin AI đã sử dụng.**
+
+**Bối cảnh:** Bao phủ REQ-FR-14, REQ-NFR-04 và PRD Value Proposition.
+
+**Tiêu chí chấp nhận:**
+
+- Câu trả lời có nguồn phải hiển thị citation và lưu document ID/version ID.
+- Citation phải trỏ tới tài liệu tồn tại, version hiện hành và nằm trong quyền xem của Reader.
+- Citation của tài liệu trái quyền không được xuất hiện.
+
+**Phụ thuộc:** US-AI-02, US-AI-10 và Source Record.
+
+**Ước lượng:** 2 điểm
+
+# **US-AI-12 - Ghi audit log hoạt động quan trọng**
+
+**Với vai trò là Admin, tôi muốn hệ thống ghi lại hoạt động quan trọng,
+để có thể truy vết thay đổi, Review, Publish và Ask AI.**
+
+**Bối cảnh:** Bao phủ REQ-FR-16, REQ-NFR-05 và REQ-ASM-04.
+
+**Tiêu chí chấp nhận:**
+
+- Create, Edit, Review, Approve, Publish và Ask AI tạo audit record.
+- Mỗi record có actor, action, object/document hoặc request, timestamp và result.
+- Happy path, permission denied và error path đều được ghi theo policy đã chốt.
+
+**Phụ thuộc:** Các story nghiệp vụ tương ứng và danh sách hoạt động quan trọng được phê duyệt.
 
 **Ước lượng:** 3 điểm
 
@@ -94,14 +163,16 @@ thể xây dựng và cập nhật tri thức cho Knowledge Base.**
 
 **Bối cảnh:\
 **Bao phủ REQ-FR-02 và REQ-FR-03. Một tài liệu gồm Name, Content,
-Folder, Tag, Status và Initial Version.
+Folder, Tag và Status. Bản Draft ban đầu chưa phải Version chính thức;
+Version chính thức chỉ được tạo khi Publish.
 
 **Tiêu chí chấp nhận:**
 
 **AC1\
 Cho:** Người dùng có vai trò Author\
 **Khi:** Author tạo tài liệu với Name, Content, Folder và Tag\
-**Thì:** Hệ thống tạo tài liệu với Status Draft và Initial Version.
+**Thì:** Hệ thống tạo tài liệu với Status Draft và lưu bản Draft ban đầu,
+chưa tạo Version chính thức.
 
 **AC2\
 Cho:** Author đang tạo tài liệu\
@@ -134,8 +205,8 @@ Cho:** Tài liệu đã được tạo\
 
 # **US-AI-04 - Tổ chức tài liệu bằng Folder và Tag**
 
-**Với vai trò là người dùng có quyền, tôi muốn tổ chức tài liệu bằng
-Folder và Tag, để tài liệu được phân loại và dễ tìm kiếm hơn.**
+**Với vai trò là Author hoặc người có quyền chỉnh sửa, tôi muốn tổ chức tài liệu
+bằng Folder và Tag, để tài liệu được phân loại và dễ tìm kiếm hơn.**
 
 **Bối cảnh:\
 **Bao phủ REQ-FR-05. Người dùng có quyền có thể tổ chức tài liệu bằng
@@ -179,7 +250,7 @@ Review, để Reviewer có thể kiểm tra trước khi tài liệu được Pu
 **Bối cảnh:\
 **Bao phủ REQ-FR-06 và REQ-FR-07. Quy trình bắt buộc của hệ thống là:
 
-**Create → Review → Publish → Version → Search/Ask**
+**Create → Review → Approve → Publish → Version → Search/Ask**
 
 **Tiêu chí chấp nhận:**
 
@@ -215,31 +286,32 @@ Version.
 
 # **US-AI-06 - Review và Approve hoặc Reject tài liệu**
 
-**Với vai trò là Reviewer, tôi muốn Review tài liệu và Approve hoặc
+**Với vai trò là Reviewer hoặc Admin, tôi muốn Review tài liệu và Approve hoặc
 Reject tài liệu, để chỉ những tài liệu đã được kiểm tra mới có thể tiếp
 tục đến bước Publish.**
 
 **Bối cảnh:\
-**Bao phủ REQ-FR-08, REQ-FR-09 và hỗ trợ REQ-BR-01. Review Queue tối thiểu
+**Bao phủ REQ-FR-08, REQ-FR-09 và hỗ trợ REQ-BR-01. Reviewer và Admin đều có
+quyền xử lý Review. Review Queue tối thiểu
 phải hiển thị Document, Version, Sender và Status của Review Request.
 
 **Tiêu chí chấp nhận:**
 
 **AC1\
 Cho:** Có các Review Request đã được gửi\
-**Khi:** Reviewer mở Review Queue\
+**Khi:** Reviewer hoặc Admin mở Review Queue\
 **Thì:** Hệ thống hiển thị Document, Version, Sender và Review Status.
 
 **AC2\
 Cho:** Một Review Request đang chờ xử lý\
-**Khi:** Reviewer Approve Version\
-**Thì:** Hệ thống lưu kết quả Approved, Reviewer thực hiện và thời gian
+**Khi:** Reviewer hoặc Admin Approve Version\
+**Thì:** Hệ thống lưu kết quả Approved, người thực hiện và thời gian
 thực hiện.
 
 **AC3\
 Cho:** Một Review Request đang chờ xử lý\
-**Khi:** Reviewer Reject Version\
-**Thì:** Hệ thống lưu kết quả Rejected, Reviewer thực hiện và thời gian
+**Khi:** Reviewer hoặc Admin Reject Version với lý do\
+**Thì:** Hệ thống lưu kết quả Rejected, lý do, người thực hiện và thời gian
 thực hiện.
 
 **AC4\
@@ -264,18 +336,18 @@ quyền; quy trình phê duyệt bên ngoài hệ thống.
 
 # **US-AI-07 - Publish tài liệu đã được Approve**
 
-**Với vai trò là người dùng có quyền, tôi muốn Publish một Version đã
-được Approve, để Version đó trở thành Version chính thức của tài liệu.**
+**Với vai trò là Reviewer hoặc Admin, tôi muốn Publish một Draft đã
+được Approve, để Draft đó trở thành Version chính thức của tài liệu.**
 
 **Bối cảnh:\
-**Bao phủ REQ-FR-10 và hỗ trợ REQ-BR-01, REQ-BR-05. Chỉ Version đã được Reviewer
-Approve mới được phép Publish.
+**Bao phủ REQ-FR-10 và hỗ trợ REQ-BR-01, REQ-BR-05. Chỉ Draft đã được Reviewer
+hoặc Admin Approve mới được phép Publish; Author không được Publish.
 
 **Tiêu chí chấp nhận:**
 
 **AC1\
 Cho:** Version có kết quả Review là Approved\
-**Khi:** Người dùng có quyền thực hiện Publish\
+**Khi:** Reviewer hoặc Admin thực hiện Publish\
 **Thì:** Status của tài liệu chuyển thành Published.
 
 **AC2\
@@ -295,8 +367,7 @@ Cho:** Một Version đã được Publish\
 **Thì:** Hệ thống hiển thị rõ Status Published và Current Version.
 
 **Ngoài phạm vi:\
-**Xác định ai có quyền Publish nếu nhóm chưa thống nhất; tạo/chỉnh sửa
-Version; quyết định Review; xếp hạng kết quả Search.
+**Tạo/chỉnh sửa Version; quyết định Review; xếp hạng kết quả Search.
 
 **Phụ thuộc:\
 **US-AI-06; quản lý Version; kiểm soát quyền truy cập; Audit Log.
@@ -352,7 +423,7 @@ Cho:** Tài liệu có các Version không hiện hành\
 Cho:** Tài liệu có nhiều Version\
 **Khi:** Admin, Reviewer hoặc Author xem lịch sử Version\
 **Thì:** Hệ thống hiển thị Version, người tạo, thời điểm tạo và trạng
-thái của từng Version; Reader chỉ được xem Version gần nhất.
+thái của từng Version; Reader chỉ được xem Version hiện hành đã Published.
 
 **Ngoài phạm vi:\
 **Tìm kiếm và Q&A trên Version; so sánh nội dung giữa các Version; chỉnh

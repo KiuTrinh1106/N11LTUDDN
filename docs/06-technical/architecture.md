@@ -134,13 +134,13 @@ LLM output là untrusted input: không thực thi arbitrary SQL, arbitrary URL, 
 - Nhận event từ API Gateway hoặc application services sau mỗi command quan trọng.
 - Record tối thiểu: `actor_id`, `action`, `object_type`, `object_id`, `occurred_at`, `result`, `correlation_id` và metadata audit cần thiết.
 - Ưu tiên append-only; quyền sửa/xóa audit phải bị giới hạn và được ghi nhận tiếp.
-- Audit failure policy cần được chốt: với command quan trọng, transaction có thể cần fail nếu không ghi được audit; đây là điểm cần quyết định trước implementation.
+- Với command quan trọng, audit phải được ghi trong cùng transaction nghiệp vụ hoặc command phải fail nếu không ghi được audit. AuditEvent trong PostgreSQL là append-only source-of-truth của MVP.
 
 ### 3.3 Data & External Layer
 
 #### Operational Database
 
-Database lưu dữ liệu nghiệp vụ chuẩn: User/role, Document, Draft, Folder, Tag, Review Request, official Version, current-version marker và source record Q&A. Công nghệ và schema vật lý `TBD` trong ADR-002/database-schema.
+Database lưu dữ liệu nghiệp vụ chuẩn: User/role, Document, Draft, Folder, Tag, Review Request, official Version, current-version marker, source record Q&A và AuditEvent. PostgreSQL và schema được chốt trong `adr/adr-001-database.md` và `database-schema.md`.
 
 Các yêu cầu consistency:
 
@@ -240,7 +240,7 @@ Các endpoint cụ thể chưa được chốt trong `api-contract.md`; nhóm c�
 | Ask AI          | Submit question, return answer/source record | Reader access, internal sources only, structured output validation, audit. |
 | Audit           | Query audit history theo quyền               | Không cho sửa record tùy ý; filter actor/object visibility theo policy.    |
 
-Error contract nên phân biệt tối thiểu `400` validation, `401` unauthenticated, `403` permission denied, `404` resource không được phép hiển thị như tồn tại, `409` invalid state/concurrency và `5xx` dependency/system failure. Mã cuối cùng cần được chốt trong `api-contract.md`.
+Error contract nên phân biệt tối thiểu `400` validation, `401` unauthenticated, `403` permission denied, `404` resource không được phép hiển thị như tồn tại, `409` invalid state/concurrency và `5xx` dependency/system failure; format response và mã lỗi được chốt trong `api-contract.md`.
 
 ## 6. Rủi ro kỹ thuật và phòng ngừa
 
@@ -260,4 +260,4 @@ Các rủi ro cần theo dõi thêm khi triển khai: LLM trả tool call độc
 - [ ] Search/Q&A không trả tài liệu, metadata, citation hoặc context ngoài quyền.
 - [ ] Create, Edit, Review, Approve, Publish và Ask AI có audit record đủ actor/action/object/time/result.
 - [ ] Có test timeout LLM, lỗi Database, retry/idempotency và recovery.
-- [ ] Stack, API contract, schema vật lý và policy audit được chốt trong các ADR/tài liệu technical tương ứng trước implementation.
+- [ ] Stack, API contract, schema logic/vật lý và policy audit được chốt trong các ADR/tài liệu technical tương ứng trước implementation.

@@ -10,7 +10,7 @@
 | EP3 | Quy trình Review và Publish | US-AI-06 | Review và Approve hoặc Reject tài liệu | 3 |
 | EP3 | Quy trình Review và Publish | US-AI-07 | Publish tài liệu đã được Approve | 2 |
 | EP4 | Quản lý Version và lịch sử | US-AI-08 | Tạo và quản lý Version tài liệu | 3 |
-| EP5 | Tìm kiếm và khám phá tri thức | US-AI-10 | Tìm kiếm tài liệu theo quyền truy cập | 3 |
-| EP6 | Trợ lý tri thức AI | US-AI-12 | Hỏi AI về các tài liệu được phép truy cập | 3 |
-| EP6 | Trợ lý tri thức AI | US-AI-13 | Hiển thị và lưu nguồn tài liệu, Version được AI sử dụng | 3 |
-| EP7 | Audit và quản trị hệ thống | US-AI-14 | Xem lịch sử các hoạt động quan trọng | 2 |
+| EP5 | Tìm kiếm và khám phá tri thức | US-AI-09 | Tìm kiếm tài liệu theo quyền | 3 |
+| EP6 | Trợ lý tri thức AI | US-AI-10 | Hỏi AI về tài liệu được phép | 5 |
+| EP6 | Trợ lý tri thức AI | US-AI-11 | Hiển thị và lưu citation | 2 |
+| EP7 | Audit hoạt động quan trọng | US-AI-12 | Ghi audit log hoạt động quan trọng | 3 |

@@ -37,6 +37,6 @@
 
 ### Cần nhóm dự án xác nhận
 
-1. Mô hình phân quyền là RBAC, ABAC hay kết hợp; ai được cấp, sửa và thu hồi quyền tài liệu?
+1. Mô hình phân quyền là RBAC (phân quyền dựa trên vai trò), ABAC (phân quyền dựa trên thuộc tính) hay kết hợp; ai được cấp, sửa và thu hồi quyền tài liệu?
 2. Version tăng ở mỗi lần sửa, gửi Review hay Publish; có cho phép khôi phục version đã lưu không?
 3. Danh sách đầy đủ hoạt động phải ghi vào Audit log và thời gian lưu log là bao lâu?
