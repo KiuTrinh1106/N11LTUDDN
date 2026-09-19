@@ -26,6 +26,9 @@ nav { display: flex; gap: 20px; }
 nav button:hover, .back-button:hover { color: var(--primary); }
 .user-chip, .badge { border-radius: 999px; padding: 6px 10px; font-size: 12px; font-weight: 700; }
 .user-chip { background: #edf2f7; }
+.topbar-actions { display: flex; align-items: center; gap: 10px; }
+.logout-button { border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; background: var(--surface); color: var(--primary-dark); font-weight: 700; }
+.logout-button:hover { border-color: var(--primary); color: var(--primary); }
 .main { max-width: 1120px; margin: 0 auto; padding: 48px 24px 72px; }
 .page-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; margin-bottom: 28px; }
 h1, h2, h3, p { margin-top: 0; }
