@@ -1,0 +1,741 @@
+openapi: 3.0.3
+info:
+  title: Document & AI Management API
+  version: 1.0.0
+  description: API Contract cho hệ thống quản lý tài liệu và AI Assistant
+servers:
+  - url: http://localhost:8080
+    description: Mock/Dev Server
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    CorrelationIdHeader:
+      name: X-Correlation-Id
+      in: header
+      required: false
+      schema:
+        type: string
+    IdempotencyKeyHeader:
+      name: Idempotency-Key
+      in: header
+      required: false
+      schema:
+        type: string
+    PageQuery:
+      name: page
+      in: query
+      schema:
+        type: integer
+        default: 1
+    PageSizeQuery:
+      name: pageSize
+      in: query
+      schema:
+        type: integer
+        default: 20
+        maximum: 100
+    IdPathParam:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code: { type: string }
+            message: { type: string }
+            details: { type: object }
+            correlationId: { type: string }
+    User:
+      type: object
+      properties:
+        id: { type: string }
+        email: { type: string }
+        displayName: { type: string }
+        role: { type: string }
+        isActive: { type: boolean }
+    DocumentSummary:
+      type: object
+      properties:
+        id: { type: string }
+        title: { type: string }
+        status: { type: string }
+        draftId: { type: string }
+        createdAt: { type: string, format: date-time }
+
+paths:
+  # ---------------- AUTH ----------------
+  /api/auth/login:
+    post:
+      summary: Đăng nhập
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string }
+      responses:
+        '200':
+          description: Đăng nhập thành công
+          content:
+            application/json:
+              example:
+                accessToken: "eyJhbGci..."
+                user: { id: "u1", email: "user@example.com", displayName: "Nguyen Van A", role: "AUTHOR" }
+        '400':
+          description: INVALID_INPUT
+        '401':
+          description: INVALID_CREDENTIALS
+        '403':
+          description: USER_INACTIVE
+        '429':
+          description: TOO_MANY_ATTEMPTS
+
+  /api/auth/logout:
+    post:
+      summary: Đăng xuất
+      tags: [Auth]
+      security:
+        - BearerAuth: []
+      responses:
+        '204':
+          description: Đăng xuất thành công
+        '401':
+          description: UNAUTHENTICATED
+
+  /api/auth/me:
+    get:
+      summary: Lấy thông tin user hiện tại
+      tags: [Auth]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          description: UNAUTHENTICATED
+
+  # ---------------- DOCUMENTS ----------------
+  /api/documents:
+    post:
+      summary: Tạo tài liệu mới
+      description: |
+        **User Story**: Là `AUTHOR` hoặc người dùng được cấp quyền khởi tạo, tôi muốn tạo mới tài liệu dạng bản nháp (`DRAFT`) để chuẩn bị nội dung trước khi gửi duyệt.
+      tags: [Documents]
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CorrelationIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, content]
+              properties:
+                title:
+                  type: string
+                  example: "Kế hoạch ra mắt sản phẩm Q4"
+                content:
+                  type: string
+                  example: "Chi tiết lộ trình phát triển và tài nguyên phân bổ..."
+                folderId:
+                  type: string
+                  example: "folder_abc123"
+                tagIds:
+                  type: array
+                  items:
+                    type: string
+                  example: ["tag_planning", "tag_2026"]
+      responses:
+        '201':
+          description: Tạo thành công tài liệu bản nháp
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id, title, status, draftId, createdAt]
+                properties:
+                  id: { type: string, example: "doc_123" }
+                  title: { type: string, example: "Kế hoạch ra mắt sản phẩm Q4" }
+                  status: { type: string, enum: [DRAFT], example: "DRAFT" }
+                  draftId: { type: string, example: "draft_1" }
+                  createdAt: { type: string, format: date-time, example: "2026-09-19T00:00:00Z" }
+        '400':
+          description: VALIDATION_ERROR - Dữ liệu đầu vào thiếu hoặc sai định dạng
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error:
+                  code: "VALIDATION_ERROR"
+                  message: "Trường 'title' và 'content' là bắt buộc"
+                  correlationId: "corr_01"
+        '401':
+          description: UNAUTHENTICATED - Chưa đăng nhập hoặc token JWT không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error:
+                  code: "UNAUTHENTICATED"
+                  message: "Phiên đăng nhập đã hết hạn hoặc token không hợp lệ"
+                  correlationId: "corr_02"
+        '403':
+          description: FORBIDDEN - Không có quyền tạo tài liệu (Cần quyền AUTHOR)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error:
+                  code: "FORBIDDEN"
+                  message: "Tài khoản của bạn không có quyền tạo tài liệu"
+                  correlationId: "corr_03"
+        '404':
+          description: FOLDER_OR_TAG_NOT_FOUND - Thư mục hoặc thẻ gắn kèm không tồn tại
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error:
+                  code: "FOLDER_OR_TAG_NOT_FOUND"
+                  message: "Thư mục 'folder_abc123' không tồn tại trong hệ thống"
+                  correlationId: "corr_04"
+        '409':
+          description: DUPLICATE_DOCUMENT - Tiêu đề bị trùng lặp trong thư mục
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error:
+                  code: "DUPLICATE_DOCUMENT"
+                  message: "Đã tồn tại tài liệu cùng tiêu đề trong thư mục này"
+                  correlationId: "corr_05"
+
+  /api/documents/{id}:
+    parameters:
+      - $ref: '#/components/parameters/IdPathParam'
+    get:
+      summary: Chi tiết tài liệu
+      tags: [Documents]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              example:
+                id: "doc_123"
+                title: "Tài liệu mẫu"
+                content: "Nội dung tài liệu..."
+                folder: { id: "f1", name: "Thư mục chung" }
+                tags: [{ id: "t1", name: "Quan trọng" }]
+                status: "DRAFT"
+                currentVersionId: "v1"
+                updatedAt: "2026-09-19T00:00:00Z"
+        '401':
+          description: UNAUTHENTICATED
+        '403':
+          description: FORBIDDEN
+        '404':
+          description: DOCUMENT_NOT_FOUND_OR_NOT_VISIBLE
+
+    patch:
+      summary: Cập nhật tài liệu
+      tags: [Documents]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title: { type: string }
+                content: { type: string }
+                folderId: { type: string }
+                tagIds:
+                  type: array
+                  items: { type: string }
+                version: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              example:
+                id: "doc_123"
+                draftId: "draft_2"
+                status: "DRAFT"
+                updatedAt: "2026-09-19T01:00:00Z"
+        '400':
+          description: VALIDATION_ERROR
+        '401':
+          description: UNAUTHENTICATED
+        '403':
+          description: EDIT_FORBIDDEN
+        '404':
+          description: DOCUMENT_NOT_FOUND_OR_NOT_VISIBLE
+        '409':
+          description: INVALID_STATE_OR_VERSION_CONFLICT
+
+  /api/documents/{id}/review:
+    post:
+      summary: Gửi yêu cầu duyệt tài liệu
+      tags: [Documents]
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+        - $ref: '#/components/parameters/IdempotencyKeyHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                draftId: { type: string }
+                version: { type: string }
+      responses:
+        '201':
+          description: Yêu cầu duyệt đã được tạo
+          content:
+            application/json:
+              example:
+                reviewRequestId: "rev_1"
+                documentId: "doc_123"
+                draftId: "draft_2"
+                status: "PENDING"
+                submittedAt: "2026-09-19T02:00:00Z"
+        '400':
+          description: VALIDATION_ERROR
+        '409':
+          description: REVIEW_ALREADY_PENDING_OR_INVALID_STATE
+
+  /api/documents/{id}/versions:
+    get:
+      summary: Danh sách phiên bản tài liệu
+      tags: [Documents]
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+        - $ref: '#/components/parameters/PageQuery'
+        - $ref: '#/components/parameters/PageSizeQuery'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              example:
+                items:
+                  - id: "v1"
+                    versionNumber: 1
+                    publishedAt: "2026-09-10T00:00:00Z"
+                currentVersionId: "v1"
+                page: 1
+                pageSize: 20
+
+  /api/documents/{id}/publish:
+    post:
+      summary: Xuất bản tài liệu
+      description: |
+        **User Story**: Là Reviewer/Admin, tôi muốn xuất bản bản thảo đã được duyệt thành phiên bản chính thức để người đọc (READER) có thể truy cập.
+      tags: [Documents]
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdPathParam'
+        - $ref: '#/components/parameters/IdempotencyKeyHeader'
+        - $ref: '#/components/parameters/CorrelationIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [draftId, version]
+              properties:
+                draftId:
+                  type: string
+                  example: "draft_123"
+                version:
+                  type: string
+                  example: "v1.0"
+      responses:
+        '201':
+          description: Xuất bản tài liệu thành công
+          content:
+            application/json:
+              example:
+                documentId: "doc_123"
+                versionId: "ver_2"
+                versionNumber: 2
+                status: "PUBLISHED"
+                isCurrent: true
+                publishedAt: "2026-09-19T03:00:00Z"
+        '400':
+          description: INVALID_INPUT
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '401':
+          description: UNAUTHENTICATED
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '403':
+          description: PUBLISH_FORBIDDEN - Cần quyền REVIEWER hoặc ADMIN
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: DOCUMENT_OR_DRAFT_NOT_FOUND
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '409':
+          description: NOT_APPROVED_OR_ALREADY_PUBLISHED_OR_VERSION_CONFLICT - Bản thảo chưa được Approved hoặc đã Publish rồi
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+  # ---------------- REVIEWS & PUBLISH ----------------
+  /api/reviews/{reviewId}/approve:
+    post:
+      summary: Duyệt yêu cầu tài liệu
+      description: |
+        **User Story**: Là Reviewer/Admin, tôi muốn phê duyệt yêu cầu xét duyệt tài liệu để cho phép xuất bản (Publish).
+      tags: [Reviews]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: reviewId
+          in: path
+          required: true
+          schema: { type: string }
+        - $ref: '#/components/parameters/CorrelationIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [version]
+              properties:
+                version:
+                  type: string
+                  description: "Version token để chống xung đột trạng thái"
+                  example: "v1.0"
+      responses:
+        '200':
+          description: Phê duyệt thành công
+          content:
+            application/json:
+              example:
+                reviewRequestId: "rev_123"
+                status: "APPROVED"
+                reviewerId: "u_reviewer"
+                reviewedAt: "2026-09-19T02:30:00Z"
+        '400':
+          description: INVALID_INPUT
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '401':
+          description: UNAUTHENTICATED
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '403':
+          description: APPROVE_FORBIDDEN - Chỉ REVIEWER hoặc ADMIN mới có quyền
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: REVIEW_NOT_FOUND - Không tìm thấy yêu cầu duyệt
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '409':
+          description: REVIEW_NOT_PENDING_OR_VERSION_CONFLICT - Yêu cầu không ở trạng thái PENDING hoặc lệch version
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  /api/reviews/{reviewId}/reject:
+    post:
+      summary: Từ chối yêu cầu xét duyệt
+      description: |
+        **User Story**: Là Reviewer/Admin, tôi muốn từ chối bản nháp kèm lý do để Author sửa lại.
+      tags: [Reviews]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: reviewId
+          in: path
+          required: true
+          schema: { type: string }
+        - $ref: '#/components/parameters/CorrelationIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason, version]
+              properties:
+                reason:
+                  type: string
+                  example: "Nội dung mục 2 chưa đủ số liệu kiểm chứng"
+                version:
+                  type: string
+                  example: "v1.0"
+      responses:
+        '200':
+          description: Đã từ chối xét duyệt
+          content:
+            application/json:
+              example:
+                reviewRequestId: "rev_123"
+                status: "REJECTED"
+                reviewerId: "u_reviewer"
+                decisionReason: "Nội dung mục 2 chưa đủ số liệu kiểm chứng"
+                reviewedAt: "2026-09-19T02:35:00Z"
+        '400':
+          description: REASON_REQUIRED_OR_INVALID_INPUT
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '401':
+          description: UNAUTHENTICATED
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '403':
+          description: REJECT_FORBIDDEN
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: REVIEW_NOT_FOUND
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '409':
+          description: REVIEW_NOT_PENDING_OR_VERSION_CONFLICT
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+  # ---------------- FOLDERS ----------------
+  /api/folders:
+    get:
+      summary: Danh sách thư mục
+      tags: [Folders]
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PageQuery'
+        - $ref: '#/components/parameters/PageSizeQuery'
+        - name: q
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK
+    post:
+      summary: Tạo thư mục
+      tags: [Folders]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              example:
+                id: "f1"
+                name: "Thư mục chung"
+                createdBy: "u1"
+                createdAt: "2026-09-19T00:00:00Z"
+
+  # ---------------- SEARCH ----------------
+  /api/search:
+    get:
+      summary: Tìm kiếm tài liệu toàn cục
+      tags: [Search]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: q
+          in: query
+          schema: { type: string }
+        - name: folderId
+          in: query
+          schema: { type: string }
+        - name: tagId
+          in: query
+          schema: { type: string }
+        - $ref: '#/components/parameters/PageQuery'
+        - $ref: '#/components/parameters/PageSizeQuery'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              example:
+                items: []
+                page: 1
+                pageSize: 20
+                total: 0
+
+  # ---------------- AI / CHAT ----------------
+  /api/ai/conversations:
+    post:
+      summary: Bắt đầu hội thoại AI mới
+      tags: [AI]
+      security:
+        - BearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                documentId: { type: string }
+      responses:
+        '201':
+          description: Tạo thành công
+          content:
+            application/json:
+              example:
+                id: "conv_1"
+                userId: "u1"
+                documentId: "doc_123"
+                status: "ACTIVE"
+                createdAt: "2026-09-19T04:00:00Z"
+
+  /api/ai/conversations/{conversationId}/messages:
+    post:
+      summary: Gửi tin nhắn cho AI
+      tags: [AI]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                content: { type: string }
+      responses:
+        '202':
+          description: Đang xử lý
+          content:
+            application/json:
+              example:
+                requestId: "req_1"
+                messageId: "msg_1"
+                status: "PROCESSING"
+        '429':
+          description: AI_RATE_LIMITED
+        '503':
+          description: AI_UNAVAILABLE
+
+  /api/ai/requests/{requestId}:
+    get:
+      summary: Kiểm tra trạng thái phản hồi AI
+      tags: [AI]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: requestId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              example:
+                requestId: "req_1"
+                status: "COMPLETED"
+                answer: "Tài liệu này nói về..."
+                citations:
+                  - documentId: "doc_123"
+                    snippet: "...nội dung trích dẫn..."
+
+  # ---------------- AUDIT ----------------
+  /api/audit-events:
+    get:
+      summary: Lấy nhật ký hệ thống (Audit Logs)
+      tags: [Audit]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: actorId
+          in: query
+          schema: { type: string }
+        - name: action
+          in: query
+          schema: { type: string }
+        - $ref: '#/components/parameters/PageQuery'
+        - $ref: '#/components/parameters/PageSizeQuery'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              example:
+                items:
+                  - id: "evt_1"
+                    actorId: "u1"
+                    action: "DOCUMENT_CREATED"
+                    objectType: "DOCUMENT"
+                    objectId: "doc_123"
+                    timestamp: "2026-09-19T00:00:00Z"
+                page: 1
+                pageSize: 20
+                total: 1
