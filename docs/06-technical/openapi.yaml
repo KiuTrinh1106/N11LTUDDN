@@ -308,37 +308,79 @@ paths:
 
   /api/documents/{id}/review:
     post:
-      summary: Gửi yêu cầu duyệt tài liệu
-      tags: [Documents]
+      summary: Gửi tài liệu vào quy trình Review (US-AI-05)
+      description: |
+        **User Story (US-AI-05)**: Là Author hoặc người có quyền Edit, tôi muốn gửi bản nháp (Draft) vào quy trình Review để Reviewer kiểm tra trước khi Publish.
+        - **Khớp AC1**: Chuyển trạng thái sang dạng xét duyệt.
+        - **Khớp AC2**: Tạo ReviewRequest liên kết Document, Draft và Author.
+        - **Khớp AC3**: Trả lỗi 409 nếu Version này đang có ReviewRequest ở trạng thái chờ xử lý (PENDING).
+      tags: [Documents, Reviews]
       security:
         - BearerAuth: []
       parameters:
         - $ref: '#/components/parameters/IdPathParam'
         - $ref: '#/components/parameters/IdempotencyKeyHeader'
+        - $ref: '#/components/parameters/CorrelationIdHeader'
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
+              required: [draftId, version]
               properties:
-                draftId: { type: string }
-                version: { type: string }
+                draftId:
+                  type: string
+                  example: "draft_456"
+                  description: "ID của bản nháp cần gửi duyệt"
+                version:
+                  type: string
+                  example: "v1.0-draft"
+                  description: "Optimistic-concurrency token"
       responses:
         '201':
-          description: Yêu cầu duyệt đã được tạo
+          description: Tạo yêu cầu duyệt thành công (Status PENDING)
           content:
             application/json:
-              example:
-                reviewRequestId: "rev_1"
-                documentId: "doc_123"
-                draftId: "draft_2"
-                status: "PENDING"
-                submittedAt: "2026-09-19T02:00:00Z"
+              schema:
+                type: object
+                required: [reviewRequestId, documentId, draftId, status, submittedAt]
+                properties:
+                  reviewRequestId: { type: string, example: "rev_001" }
+                  documentId: { type: string, example: "doc_123" }
+                  draftId: { type: string, example: "draft_456" }
+                  status: { type: string, example: "PENDING" }
+                  submittedAt: { type: string, format: date-time, example: "2026-09-19T02:00:00Z" }
         '400':
-          description: VALIDATION_ERROR
+          description: VALIDATION_ERROR - Thiếu draftId hoặc version
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '401':
+          description: UNAUTHENTICATED - Chưa xác thực danh tính
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '403':
+          description: SUBMIT_REVIEW_FORBIDDEN - Cần vai trò AUTHOR hoặc quyền EDIT
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: DOCUMENT_OR_DRAFT_NOT_FOUND - Không tìm thấy Document hoặc Draft
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
         '409':
-          description: REVIEW_ALREADY_PENDING_OR_INVALID_STATE
+          description: REVIEW_ALREADY_PENDING_OR_INVALID_STATE - Đang có yêu cầu duyệt chờ xử lý hoặc sai lệch version
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+              example:
+                error:
+                  code: "REVIEW_ALREADY_PENDING_OR_INVALID_STATE"
+                  message: "Bản nháp này đã có yêu cầu xét duyệt đang chờ xử lý"
+                  correlationId: "corr_rev_003"
 
   /api/documents/{id}/versions:
     get:

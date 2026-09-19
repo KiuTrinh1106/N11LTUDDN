@@ -257,7 +257,7 @@ Review, để Reviewer có thể kiểm tra trước khi tài liệu được Pu
 **AC1\
 Cho:** Author có một tài liệu đang ở Status Draft\
 **Khi:** Author gửi Version vào Review\
-**Thì:** Status của tài liệu chuyển sang Reviewing.
+**Thì:** Status của tài liệu chuyển sang Pending.
 
 **AC2\
 Cho:** Author gửi một Version vào Review\
