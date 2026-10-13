@@ -29,7 +29,7 @@ Mỗi Task phải có đúng một User Story cha, người phụ trách, estima
 | API | `POST /api/ai/conversations`; `POST /api/ai/conversations/:conversationId/messages`; `GET /api/ai/requests/:requestId` |
 | Dữ liệu | Conversation, AiMessage, AiRequest, AiSource, Document, DocumentVersion, Permission |
 | Task | T-801, T-802, T-803, T-804, T-805, T-806 |
-| Phạm vi code | Màn hình Hỏi AI/Câu trả lời trong `src/app/App.tsx`; các module retrieval và Q&A trong `src/modules/knowledge/` |
+| Phạm vi code | Giao diện Hỏi AI/Câu trả lời trong `frontend/src/app/App.tsx` |
 | Kiểm thử | Hỏi đáp bằng version hiện hành được phép; loại nguồn trái quyền; thiếu dữ liệu; không dùng Internet; benchmark Q&A >= 80%; kiểm tra tính hợp lệ của citation |
 | Bằng chứng nghiệm thu | `docs/07-testing/test-strategy.md`, `docs/02-requirements/vault-qa-benchmark.md.md`, `docs/08-release/release-checklist.md` |
 

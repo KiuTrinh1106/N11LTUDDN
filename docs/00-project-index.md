@@ -48,7 +48,7 @@
 | Data Model & ERD                 | `data-model.md`, `database-schema.md` | [Data Model](05-technical/data-model.md) · [Database Schema](05-technical/database-schema.md) |
 | API Contracts                    | `api-contract.md`                     | [Mở artifact](05-technical/api-contract.md)                                                   |
 | Architecture Decision Records    | `adr/`                                | [Mở thư mục ADR](05-technical/adr/)                                                           |
-| Source Code Repository           | Chưa có URL repository chính thức     | [Placeholder repository](https://github.com/link-to-repo)                                     |
+| Source Code Repository           | GitHub                                 | [N11LTUDDN](https://github.com/KiuTrinh1106/N11LTUDDN)                                        |
 
 ## 5. QA, Release & Operation
 

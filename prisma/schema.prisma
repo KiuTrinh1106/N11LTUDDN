@@ -1,0 +1,137 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  READER
+  AUTHOR
+  REVIEWER
+  ADMIN
+}
+
+enum ReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum DocumentStatus {
+  DRAFT
+  REVIEWING
+  APPROVED
+  REJECTED
+  PUBLISHED
+}
+
+enum AuditResult {
+  SUCCESS
+  DENIED
+}
+
+model User {
+  id                String          @id @default(uuid()) @db.Uuid
+  email             String          @unique
+  passwordHash      String          @map("password_hash")
+  displayName       String          @map("display_name")
+  role              UserRole
+  isActive          Boolean         @default(true) @map("is_active")
+  createdAt         DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+  sessions          AuthSession[]
+  documents         Document[]
+  publishedVersions DocumentVersion[]
+  submittedReviews ReviewRequest[] @relation("ReviewSubmitter")
+  reviewedReviews  ReviewRequest[] @relation("ReviewDecider")
+  auditEvents       AuditEvent[]
+
+  @@map("users")
+}
+
+model AuthSession {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz(6)
+  revokedAt DateTime? @map("revoked_at") @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+  @@map("auth_sessions")
+}
+
+model ReviewRequest {
+  id             String       @id @default(uuid()) @db.Uuid
+  title          String
+  status         ReviewStatus @default(PENDING)
+  documentId     String?      @map("document_id")
+  submittedById  String       @map("submitted_by_id") @db.Uuid
+  reviewerId     String?      @map("reviewer_id") @db.Uuid
+  decisionReason String?      @map("decision_reason")
+  submittedAt    DateTime     @default(now()) @map("submitted_at") @db.Timestamptz(6)
+  reviewedAt     DateTime?    @map("reviewed_at") @db.Timestamptz(6)
+  document       Document?    @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  submittedBy    User         @relation("ReviewSubmitter", fields: [submittedById], references: [id], onDelete: Restrict)
+  reviewer       User?        @relation("ReviewDecider", fields: [reviewerId], references: [id], onDelete: SetNull)
+
+  @@index([status, submittedAt])
+  @@index([documentId])
+  @@map("review_requests")
+}
+
+model Document {
+  id              String           @id @default(cuid())
+  title           String
+  description     String           @default("")
+  content         String
+  category        String
+  tags            String[]         @default([])
+  status          DocumentStatus   @default(DRAFT)
+  reviewerComment String?          @map("reviewer_comment")
+  currentVersion  String           @default("Draft") @map("current_version")
+  createdAt       DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+  authorId        String           @map("author_id") @db.Uuid
+  author          User             @relation(fields: [authorId], references: [id], onDelete: Restrict)
+  reviewRequests  ReviewRequest[]
+  versions        DocumentVersion[]
+
+  @@index([status, updatedAt])
+  @@index([authorId, status])
+  @@map("documents")
+}
+
+model DocumentVersion {
+  id          String   @id @default(cuid())
+  documentId  String   @map("document_id")
+  version     String
+  title       String
+  content     String
+  publishedBy String   @map("published_by") @db.Uuid
+  publishedAt DateTime @default(now()) @map("published_at") @db.Timestamptz(6)
+  document    Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  publisher   User     @relation(fields: [publishedBy], references: [id], onDelete: Restrict)
+
+  @@unique([documentId, version])
+  @@index([documentId, publishedAt])
+  @@map("document_versions")
+}
+
+model AuditEvent {
+  id         String      @id @default(uuid()) @db.Uuid
+  actorId    String?     @map("actor_id") @db.Uuid
+  action     String
+  objectType String      @map("object_type")
+  objectId   String      @map("object_id")
+  result     AuditResult
+  occurredAt DateTime    @default(now()) @map("occurred_at") @db.Timestamptz(6)
+  actor      User?       @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([objectType, objectId, occurredAt])
+  @@index([actorId, occurredAt])
+  @@map("audit_events")
+}

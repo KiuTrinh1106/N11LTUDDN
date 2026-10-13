@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f3f5f1">
+  <title>AI KMS | Authentication demo</title>
+  <style>
+    :root { color-scheme: light; --ink: #202c2a; --muted: #677472; --paper: #f3f5f1; --white: #fff; --line: #d9dfd8; --green: #176b58; --red: #9a342b; --yellow: #f1c65b; font-family: Georgia, "Times New Roman", serif; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; color: var(--ink); background: radial-gradient(ellipse at 8% 5%, #e4ecd9 0, transparent 32%), var(--paper); }
+    main { width: min(1040px, calc(100% - 36px)); margin: 0 auto; padding: 42px 0 64px; }
+    header { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--line); padding-bottom: 18px; }
+    .brand { font-size: 19px; font-weight: 700; letter-spacing: 0; }.eyebrow { margin: 0 0 10px; color: var(--green); font: 700 11px/1.3 Arial, sans-serif; letter-spacing: 0; text-transform: uppercase; }
+    h1 { max-width: 690px; margin: 36px 0 10px; font-size: clamp(34px, 5vw, 56px); line-height: 1.03; letter-spacing: 0; }
+    .intro { max-width: 630px; color: var(--muted); font: 16px/1.6 Arial, sans-serif; }
+    .workspace { display: grid; grid-template-columns: minmax(260px, .8fr) minmax(0, 1.2fr); gap: 42px; margin-top: 34px; align-items: start; }
+    form, .panel { border-top: 3px solid var(--ink); padding-top: 18px; }
+    label { display: block; margin: 18px 0 7px; font: 700 13px Arial, sans-serif; }
+    input, select { width: 100%; min-height: 44px; border: 1px solid #aeb8b2; border-radius: 3px; padding: 10px 12px; background: var(--white); color: var(--ink); font: 15px Arial, sans-serif; }
+    button { min-height: 42px; padding: 0 16px; border: 0; border-radius: 3px; color: white; background: var(--green); cursor: pointer; font: 700 13px Arial, sans-serif; }
+    button:disabled { opacity: .5; cursor: not-allowed; }.submit { width: 100%; margin-top: 18px; }
+    .demo-hint { color: var(--muted); font: 12px/1.5 Arial, sans-serif; }
+    .identity { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; min-height: 40px; font: 13px Arial, sans-serif; }
+    .identity strong { color: var(--green); }.actions { display: flex; flex-wrap: wrap; gap: 9px; margin: 16px 0 20px; }.actions button { background: #314642; }
+    .review-list { display: grid; gap: 10px; }.review { display: flex; justify-content: space-between; align-items: center; gap: 15px; padding: 13px 0; border-bottom: 1px solid var(--line); font: 14px Arial, sans-serif; }
+    .review small { display: block; margin-top: 5px; color: var(--muted); }.status { min-height: 30px; margin-top: 18px; padding: 10px 12px; border-left: 3px solid var(--yellow); background: #fff9e8; font: 13px/1.5 Arial, sans-serif; white-space: pre-wrap; }
+    .status.error { border-color: var(--red); background: #fff0ed; color: var(--red); }.status.success { border-color: var(--green); background: #eaf4ef; color: #145843; }
+    .empty { color: var(--muted); font: 14px Arial, sans-serif; }.hidden { display: none; }
+    @media (max-width: 720px) { main { padding-top: 24px; } .workspace { grid-template-columns: 1fr; gap: 36px; } h1 { margin-top: 28px; } }
+  </style>
+</head>
+<body>
+  <main>
+    <header><span class="brand">K / AI KMS</span><span id="health" class="demo-hint">Connecting…</span></header>
+    <p class="eyebrow" style="margin-top:30px">Final release · Identity &amp; access</p>
+    <h1>Quyền được kiểm tra ở backend.</h1>
+    <p class="intro">Đăng nhập bằng tài khoản demo, rồi thử duyệt yêu cầu Review. Reader sẽ nhận 403; Reviewer/Admin được phép và quyết định được lưu cùng audit event.</p>
+    <div class="workspace">
+      <form id="login-form">
+        <p class="eyebrow">01 / Login</p>
+        <label for="account">Tài khoản demo</label>
+        <select id="account">
+          <option value="reader@demo.local">Reader</option><option value="author@demo.local">Author</option>
+          <option value="reviewer@demo.local">Reviewer</option><option value="admin@demo.local">Admin</option>
+        </select>
+        <label for="password">Mật khẩu demo</label>
+        <input id="password" type="password" autocomplete="current-password" required>
+        <button class="submit" type="submit">Đăng nhập</button>
+        <p class="demo-hint">Mật khẩu được người chạy seed thiết lập qua DEMO_PASSWORD.</p>
+      </form>
+      <section class="panel">
+        <p class="eyebrow">02 / Protected action</p>
+        <div id="identity" class="identity">Chưa đăng nhập</div>
+        <div class="actions">
+          <button id="try-approve" type="button" disabled>Thử Approve request mẫu</button>
+          <button id="refresh" type="button" disabled>Tải Review queue</button>
+          <button id="logout" type="button" disabled>Đăng xuất</button>
+        </div>
+        <div id="reviews" class="review-list"><p class="empty">Đăng nhập để tải review.</p></div>
+        <div id="status" class="status" role="status" aria-live="polite">Backend là nơi quyết định cho phép hoặc từ chối thao tác.</div>
+      </section>
+    </div>
+  </main>
+  <script type="module">
+    const account = document.querySelector("#account");
+    const password = document.querySelector("#password");
+    const identity = document.querySelector("#identity");
+    const reviewList = document.querySelector("#reviews");
+    const statusBox = document.querySelector("#status");
+    const tryApproveButton = document.querySelector("#try-approve");
+    const refreshButton = document.querySelector("#refresh");
+    const logoutButton = document.querySelector("#logout");
+    let token = sessionStorage.getItem("kms-token");
+
+    function showStatus(message, kind = "") {
+      statusBox.textContent = message;
+      statusBox.className = `status ${kind}`;
+    }
+    async function api(path, options = {}) {
+      const response = await fetch(path, {
+        ...options,
+        headers: { ...(options.body ? { "content-type": "application/json" } : {}), ...(token ? { authorization: `Bearer ${token}` } : {}), ...options.headers },
+      });
+      const payload = response.status === 204 ? null : await response.json();
+      if (!response.ok) throw Object.assign(new Error(payload?.error?.message ?? "Request failed"), { status: response.status, code: payload?.error?.code });
+      return payload;
+    }
+    function signedIn(user) {
+      identity.replaceChildren();
+      const label = document.createElement("strong");
+      label.textContent = user.role;
+      identity.append(label, document.createTextNode(` ${user.displayName} · ${user.email}`));
+      tryApproveButton.disabled = false;
+      refreshButton.disabled = false;
+      logoutButton.disabled = false;
+    }
+    async function loadReviews() {
+      try {
+        const result = await api("/api/reviews");
+        reviewList.replaceChildren();
+        if (!result.items.length) {
+          reviewList.innerHTML = '<p class="empty">Không còn yêu cầu đang chờ.</p>';
+          showStatus("Review queue tải thành công.", "success");
+          return;
+        }
+        for (const item of result.items) {
+          const row = document.createElement("div");
+          row.className = "review";
+          const title = document.createElement("span");
+          title.textContent = item.title;
+          const approve = document.createElement("button");
+          approve.type = "button";
+          approve.textContent = "Approve";
+          approve.addEventListener("click", async () => {
+            try {
+              await api(`/api/reviews/${item.id}/approve`, { method: "POST", body: "{}" });
+              showStatus("Đã Approve. Backend đã lưu trạng thái và audit event.", "success");
+              await loadReviews();
+            } catch (error) {
+              showStatus(`${error.status ?? "Error"} ${error.code ?? "REQUEST_FAILED"}: ${error.message}`, "error");
+            }
+          });
+          row.append(title, approve);
+          reviewList.append(row);
+        }
+        showStatus("Review queue tải thành công.", "success");
+      } catch (error) {
+        reviewList.replaceChildren();
+        showStatus(`${error.status ?? "Error"} ${error.code ?? "REQUEST_FAILED"}: ${error.message}`, "error");
+      }
+    }
+    document.querySelector("#login-form").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      try {
+        const result = await api("/api/auth/login", { method: "POST", body: JSON.stringify({ email: account.value, password: password.value }) });
+        token = result.accessToken;
+        sessionStorage.setItem("kms-token", token);
+        signedIn(result.user);
+        showStatus("Đăng nhập thành công. Role lấy từ user đã xác thực.", "success");
+        await loadReviews();
+      } catch (error) {
+        showStatus(`${error.status ?? "Error"} ${error.code ?? "REQUEST_FAILED"}: ${error.message}`, "error");
+      }
+    });
+    refreshButton.addEventListener("click", loadReviews);
+    tryApproveButton.addEventListener("click", async () => {
+      try {
+        await api("/api/reviews/00000000-0000-4000-8000-000000000010/approve", { method: "POST", body: "{}" });
+        showStatus("Đã Approve. Backend đã lưu trạng thái và audit event.", "success");
+        await loadReviews();
+      } catch (error) {
+        showStatus(`${error.status ?? "Error"} ${error.code ?? "REQUEST_FAILED"}: ${error.message}`, "error");
+      }
+    });
+    logoutButton.addEventListener("click", async () => {
+      try { await api("/api/auth/logout", { method: "POST" }); } catch { /* Expired sessions are cleared locally too. */ }
+      token = null;
+      sessionStorage.removeItem("kms-token");
+      identity.textContent = "Đã đăng xuất";
+      tryApproveButton.disabled = true;
+      refreshButton.disabled = true;
+      logoutButton.disabled = true;
+      reviewList.innerHTML = '<p class="empty">Đăng nhập để tải review.</p>';
+      showStatus("Session đã bị thu hồi.", "success");
+    });
+    fetch("/api/health").then((response) => response.json()).then(() => { document.querySelector("#health").textContent = "API online"; }).catch(() => { document.querySelector("#health").textContent = "API offline"; });
+    if (token) api("/api/auth/me").then(signedIn).then(loadReviews).catch(() => { token = null; sessionStorage.removeItem("kms-token"); });
+  </script>
+</body>
+</html>
