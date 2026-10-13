@@ -424,3 +424,18 @@ def test_review_rejection_requires_reason_and_inactive_user_cannot_login() -> No
         json={"email": "not-a-user@example.test", "password": "wrong"},
     )
     assert inactive.status_code == 401
+
+
+def test_configured_frontend_is_served_with_backend_dashboard_available(
+    tmp_path: Any, monkeypatch: Any
+) -> None:
+    assets = tmp_path / "assets"
+    assets.mkdir()
+    (tmp_path / "index.html").write_text("<main>Frontend</main>", encoding="utf-8")
+    (assets / "app.js").write_text("console.log('frontend')", encoding="utf-8")
+    monkeypatch.setenv("FRONTEND_DIST_DIR", str(tmp_path))
+    client = _client(FakeStore())
+
+    assert client.get("/").text == "<main>Frontend</main>"
+    assert client.get("/assets/app.js").text == "console.log('frontend')"
+    assert "Backend" in client.get("/backend-dashboard").text

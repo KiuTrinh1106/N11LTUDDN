@@ -19,6 +19,7 @@ from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse, Response
+from fastapi.staticfiles import StaticFiles
 
 logger = logging.getLogger(__name__)
 
@@ -778,6 +779,15 @@ def create_app(
     backend_store = store if store is not None else PostgresStore.from_environment()
     login_attempts: dict[tuple[str, str], tuple[int, float]] = {}
     app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
+    frontend_dist_dir = os.environ.get("FRONTEND_DIST_DIR")
+    frontend_index = None
+    if frontend_dist_dir:
+        frontend_dist = Path(frontend_dist_dir)
+        frontend_index = frontend_dist / "index.html"
+        frontend_assets = frontend_dist / "assets"
+        if not frontend_index.is_file() or not frontend_assets.is_dir():
+            raise RuntimeError("FRONTEND_DIST_DIR must contain index.html and an assets directory")
+        app.mount("/assets", StaticFiles(directory=frontend_assets), name="frontend-assets")
 
     @app.exception_handler(ApiError)
     async def handle_api_error(_request: Request, error: ApiError) -> JSONResponse:
@@ -811,10 +821,19 @@ def create_app(
     def forbidden(message: str = "You do not have permission to perform this action") -> ApiError:
         return ApiError(403, "FORBIDDEN", message)
 
-    @app.get("/", include_in_schema=False)
-    async def backend_dashboard() -> FileResponse:
+    async def dashboard_file() -> FileResponse:
         dashboard_path = Path(__file__).with_name("backend_dashboard.html")
         return FileResponse(dashboard_path, media_type="text/html")
+
+    @app.get("/", include_in_schema=False)
+    async def backend_dashboard() -> FileResponse:
+        if frontend_index is not None:
+            return FileResponse(frontend_index, media_type="text/html")
+        return await dashboard_file()
+
+    @app.get("/backend-dashboard", include_in_schema=False)
+    async def backend_dashboard_page() -> FileResponse:
+        return await dashboard_file()
 
     @app.get("/api/health")
     async def health() -> dict[str, str]:

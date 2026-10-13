@@ -56,6 +56,12 @@ npm run build
 
 The API tests cover successful Reviewer approval, Reader denial with an audit record, and session revocation. Migration/seed execution requires a reachable PostgreSQL database.
 
+## Deploy to Render
+
+The root `render.yaml` Blueprint deploys branch `Thơ` as a single FastAPI web service with the built Vite frontend and a PostgreSQL database. In Render, create a new Blueprint from this GitHub repository and select branch `Thơ`. Provide a unique `DEMO_PASSWORD` of at least 12 characters when prompted; Render generates `AUTH_SECRET` and supplies the database connection string. The first service start applies migrations and seeds the demo users only when the demo author account does not exist.
+
+The free web service may spin down when idle, and the free PostgreSQL database is temporary and expires after its trial period. Do not use this setup for production data. After deployment, open the service URL and sign in with `author@demo.local` (or another `*@demo.local` account) and the configured `DEMO_PASSWORD`. The backend dashboard remains available at `/backend-dashboard`.
+
 ## Repository, Contribution, and Release Evidence
 
 Repository: [github.com/KiuTrinh1106/N11LTUDDN](https://github.com/KiuTrinh1106/N11LTUDDN).
