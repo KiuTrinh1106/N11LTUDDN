@@ -1,0 +1,706 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#101d33">
+    <title>AI KMS | Backend Monitor</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --navy: #101d33;
+        --navy-soft: #1c2e4b;
+        --navy-muted: #a8b8ce;
+        --ink: #17243a;
+        --muted: #68778d;
+        --line: #e4eaf1;
+        --canvas: #f4f7fb;
+        --surface: #fff;
+        --blue: #2f6fed;
+        --blue-soft: #edf3ff;
+        --green: #13865c;
+        --green-soft: #e9f7f0;
+        --amber: #a76808;
+        --amber-soft: #fff4df;
+        --red: #bd3940;
+        --red-soft: #fff0ef;
+        font-family: Inter, "Segoe UI", Arial, sans-serif;
+        font-synthesis: none;
+        text-rendering: optimizeLegibility;
+      }
+      * { box-sizing: border-box; }
+      [hidden] { display: none !important; }
+      body { margin: 0; min-width: 320px; background: var(--canvas); color: var(--ink); }
+      button, input, textarea, select { font: inherit; }
+      button { cursor: pointer; }
+      .layout { min-height: 100vh; }
+      .sidebar {
+        position: fixed; inset: 0 auto 0 0; z-index: 5; display: flex; width: 258px;
+        flex-direction: column; padding: 23px 15px; background: var(--navy); color: #fff;
+      }
+      .brand { display: flex; align-items: center; gap: 12px; padding: 0 10px 26px; }
+      .brand-mark {
+        display: grid; width: 42px; height: 42px; place-items: center; border-radius: 13px;
+        background: #2f6fed; color: white; font-size: 13px; font-weight: 800; letter-spacing: -.4px;
+      }
+      .brand strong { display: block; font-size: 15px; letter-spacing: .2px; }
+      .brand small { display: block; margin-top: 4px; color: var(--navy-muted); font-size: 11px; }
+      .nav-label { padding: 8px 12px 9px; color: #7f91ab; font-size: 10px; font-weight: 800; letter-spacing: 1.3px; text-transform: uppercase; }
+      .nav { display: grid; gap: 5px; }
+      .nav a {
+        display: flex; align-items: center; gap: 12px; padding: 11px 12px; border-radius: 8px;
+        color: #b9c6d8; font-size: 13px; text-decoration: none; transition: background .15s, color .15s;
+      }
+      .nav a:hover, .nav a.active { background: #203654; color: #fff; }
+      .nav-icon { display: grid; width: 21px; place-items: center; color: #91a9c8; font-size: 15px; }
+      .sidebar-bottom { margin-top: auto; padding: 14px 12px 0; border-top: 1px solid #293952; color: #a8b8ce; font-size: 11px; line-height: 1.65; }
+      .sidebar-bottom strong { color: white; }
+      .main { min-height: 100vh; margin-left: 258px; }
+      .topbar {
+        position: sticky; top: 0; z-index: 4; display: flex; min-height: 72px; align-items: center;
+        justify-content: space-between; gap: 16px; padding: 0 34px; border-bottom: 1px solid var(--line);
+        background: rgb(255 255 255 / 94%); backdrop-filter: blur(10px);
+      }
+      .top-title { font-size: 14px; font-weight: 750; }
+      .top-subtitle { margin-top: 4px; color: var(--muted); font-size: 11px; }
+      .top-right { display: flex; align-items: center; gap: 10px; }
+      .origin { max-width: 250px; overflow: hidden; color: var(--muted); font: 11px ui-monospace, SFMono-Regular, Consolas, monospace; text-overflow: ellipsis; white-space: nowrap; }
+      .health-pill, .tag, .method {
+        display: inline-flex; align-items: center; gap: 7px; border-radius: 99px; font-size: 11px; font-weight: 750;
+      }
+      .health-pill { padding: 8px 11px; background: #eef2f6; color: #637187; }
+      .health-pill::before { width: 7px; height: 7px; border-radius: 50%; background: currentColor; content: ""; }
+      .health-pill.ok { background: var(--green-soft); color: var(--green); }
+      .health-pill.error { background: var(--red-soft); color: var(--red); }
+      .content { width: min(1440px, 100%); margin: 0 auto; padding: 31px 34px 56px; }
+      .page { display: none; }
+      .page.active { display: block; }
+      .page-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; margin-bottom: 24px; }
+      .eyebrow { margin-bottom: 8px; color: var(--blue); font-size: 10px; font-weight: 800; letter-spacing: 1.3px; text-transform: uppercase; }
+      h1 { margin: 0; font-size: clamp(24px, 3vw, 31px); letter-spacing: -.8px; }
+      .lead { max-width: 760px; margin: 9px 0 0; color: var(--muted); font-size: 13px; line-height: 1.65; }
+      .grid { display: grid; gap: 16px; }
+      .stats { grid-template-columns: repeat(4, minmax(0, 1fr)); margin-bottom: 18px; }
+      .two-col { grid-template-columns: minmax(0, 1.3fr) minmax(300px, .7fr); }
+      .card { min-width: 0; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); box-shadow: 0 2px 8px rgb(20 42 74 / 3%); }
+      .stat { padding: 18px; }
+      .stat-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+      .stat-label { color: var(--muted); font-size: 12px; font-weight: 650; }
+      .stat-icon { display: grid; width: 33px; height: 33px; place-items: center; border-radius: 9px; background: var(--blue-soft); color: var(--blue); font-weight: 800; }
+      .stat-value { margin-top: 17px; font-size: 20px; font-weight: 800; letter-spacing: -.4px; }
+      .stat-note { margin-top: 6px; color: var(--muted); font-size: 11px; line-height: 1.5; }
+      .card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 17px 19px; border-bottom: 1px solid var(--line); }
+      .card-head h2 { margin: 0; font-size: 14px; }
+      .card-body { padding: 19px; }
+      .info-list { display: grid; gap: 15px; }
+      .info-row { display: grid; grid-template-columns: 26px 1fr; gap: 11px; }
+      .info-bullet { display: grid; width: 25px; height: 25px; place-items: center; border-radius: 8px; background: var(--blue-soft); color: var(--blue); font-size: 11px; font-weight: 800; }
+      .info-row strong { display: block; margin-bottom: 4px; font-size: 12px; }
+      .info-row span { display: block; color: var(--muted); font-size: 11px; line-height: 1.55; }
+      .notice { padding: 12px 14px; border: 1px solid #dce7fb; border-radius: 9px; background: #f6f9ff; color: #425675; font-size: 11px; line-height: 1.6; }
+      .notice.warning { border-color: #f0dfbd; background: #fffaf0; color: #79551b; }
+      .notice.error { border-color: #f0cecb; background: #fff7f6; color: #8b3336; }
+      .section-gap { margin-top: 17px; }
+      .button {
+        display: inline-flex; min-height: 36px; align-items: center; justify-content: center; gap: 7px;
+        padding: 8px 12px; border: 1px solid #d9e1ec; border-radius: 8px; background: #fff;
+        color: #263650; font-size: 11px; font-weight: 750; transition: background .15s, border .15s;
+      }
+      .button:hover { border-color: #b8c7dc; background: #f7f9fc; }
+      .button.primary { border-color: var(--blue); background: var(--blue); color: #fff; }
+      .button.primary:hover { background: #245dd0; }
+      .button.danger { border-color: #e9c9c7; color: var(--red); }
+      .button:disabled { cursor: wait; opacity: .55; }
+      .flow { display: grid; grid-template-columns: repeat(6, minmax(120px, 1fr)); align-items: stretch; gap: 10px; }
+      .flow-step {
+        position: relative; min-height: 91px; padding: 15px 12px; border: 1px solid var(--line);
+        border-radius: 10px; background: #fff; color: var(--ink); text-align: left;
+      }
+      .flow-step:not(:last-child)::after { position: absolute; top: 36px; right: -12px; z-index: 1; color: #8aa0bd; content: "›"; font-size: 21px; font-weight: 700; }
+      .flow-step:hover, .flow-step.selected { border-color: #8eaff7; background: #f4f7ff; }
+      .step-index { display: block; margin-bottom: 10px; color: var(--blue); font-size: 10px; font-weight: 800; }
+      .step-name { display: block; font-size: 11px; font-weight: 750; line-height: 1.4; }
+      .flow-explain { min-height: 68px; margin-top: 14px; padding: 15px; border-radius: 9px; background: #f6f8fb; color: #45556e; font-size: 12px; line-height: 1.65; }
+      .table-wrap { overflow-x: auto; }
+      table { width: 100%; border-collapse: collapse; text-align: left; }
+      th { padding: 11px 13px; background: #f8fafc; color: #65748a; font-size: 10px; font-weight: 800; letter-spacing: .5px; text-transform: uppercase; white-space: nowrap; }
+      td { padding: 12px 13px; border-top: 1px solid #edf0f4; color: #405069; font-size: 11px; line-height: 1.55; vertical-align: top; }
+      .route-pick { padding: 0; border: 0; background: none; color: #263a59; text-align: left; }
+      .route-pick:hover { color: var(--blue); text-decoration: underline; }
+      .method { padding: 5px 8px; background: var(--blue-soft); color: #315fc3; font: 750 10px ui-monospace, Consolas, monospace; }
+      .method.post { background: #f0ebff; color: #684db3; }
+      .method.patch { background: var(--amber-soft); color: var(--amber); }
+      .tag { padding: 5px 8px; background: #f0f3f7; color: #53637b; font-size: 10px; }
+      .tag.open { background: var(--green-soft); color: var(--green); }
+      .tag.auth { background: var(--blue-soft); color: #315fc3; }
+      .explorer { display: grid; grid-template-columns: minmax(270px, .72fr) minmax(0, 1.28fr); gap: 16px; }
+      .field { display: grid; gap: 6px; margin-bottom: 13px; }
+      .field label { color: #52627a; font-size: 10px; font-weight: 800; }
+      input, select, textarea { width: 100%; border: 1px solid #dce3ec; border-radius: 8px; background: #fff; color: var(--ink); outline: none; }
+      input, select { min-height: 37px; padding: 8px 10px; font-size: 12px; }
+      textarea { min-height: 126px; padding: 10px; font: 11px/1.6 ui-monospace, SFMono-Regular, Consolas, monospace; resize: vertical; }
+      input:focus, select:focus, textarea:focus { border-color: #79a1fa; box-shadow: 0 0 0 3px rgb(47 111 237 / 10%); }
+      .endpoint-display { overflow-wrap: anywhere; padding: 11px; border-radius: 8px; background: #f4f7fb; color: #233650; font: 11px/1.6 ui-monospace, Consolas, monospace; }
+      .response-box { min-height: 88px; max-height: 350px; overflow: auto; margin: 10px 0 0; padding: 13px; border-radius: 8px; background: #111e31; color: #d4e2f6; font: 11px/1.65 ui-monospace, SFMono-Regular, Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
+      .response-meta { margin-top: 10px; color: var(--muted); font-size: 10px; }
+      .role-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+      .role-card { padding: 15px; border: 1px solid var(--line); border-radius: 10px; }
+      .role-card h3 { margin: 0 0 9px; font-size: 12px; }
+      .role-card p { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.65; }
+      .permission-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 11px; }
+      .permission-list .tag { font-family: ui-monospace, Consolas, monospace; font-size: 9px; }
+      .db-diagram { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; align-items: center; gap: 13px; }
+      .db-node { min-height: 100px; padding: 17px; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
+      .db-node strong { display: block; margin: 9px 0 5px; font-size: 12px; }
+      .db-node span { color: var(--muted); font-size: 10px; line-height: 1.55; }
+      .db-arrow { color: #8ca0bc; font-size: 20px; }
+      .audit-empty { padding: 38px 16px; color: var(--muted); text-align: center; font-size: 12px; line-height: 1.7; }
+      .audit-tools { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+      .muted { color: var(--muted); }
+      .small { font-size: 10px; }
+      .mobile-menu { display: none; }
+      @media (max-width: 1100px) {
+        .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .flow { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        .flow-step::after { display: none; }
+      }
+      @media (max-width: 760px) {
+        .sidebar { width: 68px; align-items: center; padding: 14px 7px; }
+        .brand { padding: 0 0 18px; }
+        .brand-copy, .nav-label, .nav-text, .sidebar-bottom { display: none; }
+        .brand-mark { width: 42px; }
+        .nav { width: 100%; }
+        .nav a { justify-content: center; padding: 12px 5px; }
+        .nav-icon { width: auto; font-size: 17px; }
+        .main { margin-left: 68px; }
+        .topbar { min-height: 62px; padding: 0 16px; }
+        .content { padding: 23px 16px 40px; }
+        .two-col, .explorer { grid-template-columns: 1fr; }
+        .origin { display: none; }
+        .role-grid { grid-template-columns: 1fr; }
+        .db-diagram { grid-template-columns: 1fr; }
+        .db-arrow { justify-self: center; transform: rotate(90deg); }
+      }
+      @media (max-width: 480px) {
+        .stats { grid-template-columns: 1fr 1fr; gap: 9px; }
+        .stat { padding: 13px; }
+        .stat-label { font-size: 10px; }
+        .stat-value { font-size: 16px; }
+        .flow { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .page-heading { display: block; }
+        .top-subtitle { display: none; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="layout">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark">AI<br>KMS</div>
+          <div class="brand-copy"><strong>AI KMS</strong><small>Backend Monitor</small></div>
+        </div>
+        <div class="nav-label">Giám sát hệ thống</div>
+        <nav class="nav" aria-label="Điều hướng Dashboard">
+          <a href="#overview" class="active" data-page="overview"><span class="nav-icon">◫</span><span class="nav-text">Tổng quan</span></a>
+          <a href="#flow" data-page="flow"><span class="nav-icon">⌁</span><span class="nav-text">Luồng xử lý request</span></a>
+          <a href="#api" data-page="api"><span class="nav-icon">⌘</span><span class="nav-text">API Explorer</span></a>
+          <a href="#auth" data-page="auth"><span class="nav-icon">◇</span><span class="nav-text">Xác thực &amp; phân quyền</span></a>
+          <a href="#database" data-page="database"><span class="nav-icon">▤</span><span class="nav-text">Database</span></a>
+          <a href="#audit" data-page="audit"><span class="nav-icon">≡</span><span class="nav-text">Audit Log</span></a>
+        </nav>
+        <div class="sidebar-bottom"><strong>FastAPI · PostgreSQL</strong><br>AI Document &amp; Knowledge Management System</div>
+      </aside>
+      <main class="main">
+        <header class="topbar">
+          <div><div class="top-title" id="top-title">Tổng quan hệ thống</div><div class="top-subtitle">Quan sát và kiểm tra backend trực tiếp</div></div>
+          <div class="top-right"><span class="origin" id="api-origin"></span><span class="health-pill" id="global-health">Đang kiểm tra</span></div>
+        </header>
+        <div class="content">
+          <section class="page active" id="page-overview" data-title="Tổng quan hệ thống">
+            <div class="page-heading">
+              <div><div class="eyebrow">AI Knowledge Management System</div><h1>Backend Monitoring</h1><p class="lead">Bảng điều khiển để tìm hiểu, quan sát và kiểm tra các API đang chạy. Trạng thái chỉ được hiển thị sau khi nhận kết quả thật từ backend.</p></div>
+              <button class="button" id="refresh-health" type="button">↻ Kiểm tra API &amp; Database</button>
+            </div>
+            <div class="grid stats">
+              <article class="card stat"><div class="stat-top"><span class="stat-label">API Health</span><span class="stat-icon">♥</span></div><div class="stat-value" id="health-value">Chưa kiểm tra</div><div class="stat-note" id="health-note">Gọi GET /api/health để kiểm tra thực tế</div></article>
+              <article class="card stat"><div class="stat-top"><span class="stat-label">Authentication</span><span class="stat-icon">◇</span></div><div class="stat-value">Bearer token</div><div class="stat-note">Token phiên được xác thực ở mỗi API cần đăng nhập</div></article>
+              <article class="card stat"><div class="stat-top"><span class="stat-label">Database</span><span class="stat-icon">▤</span></div><div class="stat-value" id="database-value">Chưa xác minh</div><div class="stat-note">PostgreSQL · trạng thái dựa trên health check</div></article>
+              <article class="card stat"><div class="stat-top"><span class="stat-label">AI Q&amp;A</span><span class="stat-icon">✳</span></div><div class="stat-value">Tìm theo từ khóa</div><div class="stat-note">Tìm kiếm tài liệu đã xuất bản, trả lời kèm nguồn</div></article>
+            </div>
+            <div class="grid two-col">
+              <article class="card"><div class="card-head"><h2>Backend đang xử lý như thế nào?</h2><span class="tag">Tổng quát</span></div><div class="card-body"><div class="info-list">
+                <div class="info-row"><span class="info-bullet">1</span><div><strong>FastAPI nhận HTTP request</strong><span>Route `/api/...` tiếp nhận request và kiểm tra dữ liệu đầu vào phù hợp với nghiệp vụ.</span></div></div>
+                <div class="info-row"><span class="info-bullet">2</span><div><strong>Authentication &amp; Authorization</strong><span>API cần đăng nhập đọc Bearer token; từng handler kiểm tra role và quyền tương ứng.</span></div></div>
+                <div class="info-row"><span class="info-bullet">3</span><div><strong>PostgresStore và PostgreSQL</strong><span>Nghiệp vụ gọi lớp lưu trữ khi cần đọc/ghi dữ liệu. Không phải mọi request đều truy vấn Database.</span></div></div>
+                <div class="info-row"><span class="info-bullet">4</span><div><strong>Trả HTTP response</strong><span>Backend trả JSON cùng status code; lỗi API được chuẩn hóa thành response có mã và thông báo.</span></div></div>
+              </div></div></article>
+              <article class="card"><div class="card-head"><h2>Phạm vi AI Q&amp;A hiện tại</h2><span class="tag">Không gọi LLM</span></div><div class="card-body">
+                <p class="lead" style="margin:0 0 13px">`POST /api/ai/ask` tìm từ khóa trong title, description, content, category và tags của tài liệu đã xuất bản.</p>
+                <div class="notice">Backend chấm điểm số từ khóa khớp, chọn tối đa 3 kết quả và trả excerpt cùng danh sách nguồn. Code hiện tại không gọi LLM hoặc triển khai RAG.</div>
+                <button class="button section-gap" type="button" data-go="api" data-endpoint="aiAsk">Mở API Q&amp;A</button>
+              </div></article>
+            </div>
+          </section>
+
+          <section class="page" id="page-flow" data-title="Luồng xử lý request">
+            <div class="page-heading"><div><div class="eyebrow">Request lifecycle</div><h1>Luồng xử lý request</h1><p class="lead">Chọn một bước để xem trách nhiệm của nó theo cấu trúc và xử lý đang có trong dự án.</p></div></div>
+            <article class="card"><div class="card-head"><h2>Luồng tổng quát</h2><span class="tag">Chọn từng bước</span></div><div class="card-body">
+              <div class="flow" id="request-flow"></div>
+              <div class="flow-explain" id="flow-explanation" aria-live="polite">Chọn một bước trong luồng để xem giải thích.</div>
+              <div class="notice warning section-gap">Database được truy vấn khi nghiệp vụ cần dữ liệu. Ví dụ: `GET /api/health` chạy `SELECT 1`; kiểm tra token đọc session/user; một số lỗi đầu vào có thể bị từ chối trước khi truy vấn nghiệp vụ.</div>
+            </div></article>
+          </section>
+
+          <section class="page" id="page-api" data-title="API Explorer">
+            <div class="page-heading"><div><div class="eyebrow">Endpoint catalog</div><h1>API Explorer</h1><p class="lead">Danh mục chỉ gồm endpoint đã đăng ký trong FastAPI. Chọn endpoint để xem request; mọi request có thể ghi dữ liệu đều cần xác nhận trước khi gửi.</p></div></div>
+            <article class="card section-gap"><div class="card-head"><h2>API đã xác nhận trong mã nguồn</h2><span class="tag" id="endpoint-count">Endpoint thực tế</span></div><div class="table-wrap"><table><thead><tr><th>Method</th><th>Endpoint</th><th>Chức năng</th><th>Xác thực</th><th>Quyền / vai trò</th></tr></thead><tbody id="endpoint-table"></tbody></table></div></article>
+            <div class="explorer section-gap">
+              <article class="card"><div class="card-head"><h2>Request</h2><span class="tag">API thật</span></div><div class="card-body">
+                <div class="field"><label for="endpoint-select">Chọn API</label><select id="endpoint-select"></select></div>
+                <div class="field"><label>Phương thức và đường dẫn</label><div class="endpoint-display" id="endpoint-display">Chọn endpoint</div></div>
+                <div id="path-fields"></div>
+                <div class="field" id="body-field"><label for="request-body">JSON body</label><textarea id="request-body" spellcheck="false"></textarea></div>
+                <button class="button primary" id="send-request" type="button">Gửi request</button>
+                <p class="muted small" id="request-hint">Request chỉ gửi khi bạn bấm nút. Request có thể thay đổi dữ liệu sẽ hỏi xác nhận.</p>
+              </div></article>
+              <article class="card"><div class="card-head"><h2>Response thực tế</h2><span class="tag" id="response-status">Chưa gửi request</span></div><div class="card-body">
+                <div id="response-message" class="muted small">Chưa có response. Chọn endpoint và chủ động gửi request.</div>
+                <pre class="response-box" id="response-body">Response JSON sẽ hiển thị tại đây.</pre>
+              </div></article>
+            </div>
+          </section>
+
+          <section class="page" id="page-auth" data-title="Xác thực và phân quyền">
+            <div class="page-heading"><div><div class="eyebrow">Identity &amp; access control</div><h1>Xác thực và phân quyền</h1><p class="lead">Đăng nhập để kiểm tra API được bảo vệ. Bearer token chỉ lưu trong bộ nhớ trang và không ghi vào Local Storage.</p></div></div>
+            <div class="grid two-col">
+              <article class="card"><div class="card-head"><h2>Kiểm tra phiên đăng nhập</h2><span class="tag" id="session-status">Chưa đăng nhập</span></div><div class="card-body">
+                <form id="login-form">
+                  <div class="field"><label for="login-email">Email</label><input id="login-email" type="email" autocomplete="username" required placeholder="email tài khoản demo"></div>
+                  <div class="field"><label for="login-password">Mật khẩu</label><input id="login-password" type="password" autocomplete="current-password" required placeholder="Mật khẩu local đã cấu hình"></div>
+                  <button class="button primary" type="submit">Đăng nhập qua API</button>
+                  <button class="button danger" type="button" id="logout-button" disabled>Đăng xuất qua API</button>
+                </form>
+                <div class="notice section-gap" id="session-message">Thông tin đăng nhập được gửi tới `POST /api/auth/login`. Token không hiển thị trên giao diện; bấm đăng xuất để thu hồi phiên.</div>
+              </div></article>
+              <article class="card"><div class="card-head"><h2>Bearer token được kiểm tra ra sao?</h2></div><div class="card-body"><div class="info-list">
+                <div class="info-row"><span class="info-bullet">1</span><div><strong>Đăng nhập</strong><span>Backend xác minh email/mật khẩu và trả access token ký bằng HMAC cùng thời hạn.</span></div></div>
+                <div class="info-row"><span class="info-bullet">2</span><div><strong>Kiểm tra phiên</strong><span>API đọc header `Authorization: Bearer ...`, kiểm tra chữ ký/hạn token, session còn hiệu lực và user đang hoạt động.</span></div></div>
+                <div class="info-row"><span class="info-bullet">3</span><div><strong>Phân quyền</strong><span>Handler kiểm tra quyền dựa trên role; quyền bị từ chối trả `403`, chưa xác thực trả `401`.</span></div></div>
+                <div class="info-row"><span class="info-bullet">4</span><div><strong>Đăng xuất</strong><span>`POST /api/auth/logout` thu hồi session ở Database; token bị thu hồi không còn xác thực.</span></div></div>
+              </div></div></article>
+            </div>
+            <article class="card section-gap"><div class="card-head"><h2>Quyền theo role trong code</h2><span class="tag">ROLES + kiểm tra trong route</span></div><div class="card-body"><div class="role-grid" id="role-grid"></div><div class="notice warning section-gap">Quyền trong bảng là quyền capability theo `ROLES`. Một số endpoint áp dụng thêm điều kiện nghiệp vụ, như Author chỉ xem/chỉnh sửa tài liệu của mình; Reader chỉ xem tài liệu đã xuất bản.</div></div></article>
+          </section>
+
+          <section class="page" id="page-database" data-title="Database">
+            <div class="page-heading"><div><div class="eyebrow">Storage layer</div><h1>Database</h1><p class="lead">FastAPI gọi `PostgresStore`; lớp này mở kết nối PostgreSQL và chạy SQL hiện có. Dashboard không đọc hay hiển thị thông tin kết nối nhạy cảm.</p></div><button class="button" type="button" data-check-health>Kiểm tra kết nối thật</button></div>
+            <article class="card"><div class="card-head"><h2>Luồng dữ liệu</h2><span class="tag">Theo triển khai hiện tại</span></div><div class="card-body">
+              <div class="db-diagram">
+                <div class="db-node"><span class="tag">HTTP / JSON</span><strong>FastAPI routes</strong><span>Xác thực request, phân quyền và điều phối nghiệp vụ.</span></div>
+                <div class="db-arrow">→</div>
+                <div class="db-node"><span class="tag">Data access</span><strong>PostgresStore</strong><span>Adapter SQL dùng psycopg2; quản lý truy vấn, kết nối và transaction.</span></div>
+                <div class="db-arrow">→</div>
+                <div class="db-node"><span class="tag">Database</span><strong>PostgreSQL</strong><span>Lưu users, sessions, documents, reviews, versions và audit events.</span></div>
+              </div>
+              <div class="notice section-gap">Nút kiểm tra gọi `GET /api/health`. Trong cấu hình mặc định, API chạy `PostgresStore.health_check()` với `SELECT 1`. Chỉ khi request thành công mới báo kiểm tra kết nối đạt; dashboard không hiển thị host, mật khẩu hay chuỗi kết nối.</div>
+              <div class="section-gap"><span class="tag" id="db-check-status">Chưa kiểm tra kết nối</span></div>
+            </div></article>
+          </section>
+
+          <section class="page" id="page-audit" data-title="Audit Log">
+            <div class="page-heading"><div><div class="eyebrow">Security events</div><h1>Audit Log</h1><p class="lead">Dữ liệu được lấy trực tiếp từ `GET /api/audit`. API hiện chỉ cho role ADMIN đọc audit log.</p></div></div>
+            <article class="card"><div class="card-head audit-tools"><div><h2>Sự kiện gần đây</h2><span class="muted small">Backend trả tối đa 200 bản ghi mới nhất</span></div><button class="button primary" id="load-audit" type="button">Tải Audit Log</button></div>
+              <div id="audit-empty" class="audit-empty">Chưa tải dữ liệu. Bấm “Tải Audit Log” để gửi request thật.<br>Cần đăng nhập bằng role ADMIN.</div>
+              <div class="table-wrap" id="audit-table-wrap" hidden><table><thead><tr><th>Thời gian</th><th>Actor</th><th>Action</th><th>Đối tượng</th><th>Kết quả</th><th>ID</th></tr></thead><tbody id="audit-table"></tbody></table></div>
+            </article>
+          </section>
+        </div>
+      </main>
+    </div>
+    <script>
+      const routes = [
+        { id: "health", method: "GET", path: "/api/health", description: "Kiểm tra API và kết nối PostgreSQL bằng SELECT 1.", auth: false, access: "Công khai", roles: "Không yêu cầu", safe: true },
+        { id: "login", method: "POST", path: "/api/auth/login", description: "Xác minh thông tin đăng nhập, tạo session và trả Bearer token.", auth: false, access: "Công khai · có giới hạn thử", roles: "Không yêu cầu", safe: false },
+        { id: "me", method: "GET", path: "/api/auth/me", description: "Trả thông tin user của session hiện tại.", auth: true, access: "User đang hoạt động", roles: "READER, AUTHOR, REVIEWER, ADMIN", safe: true },
+        { id: "logout", method: "POST", path: "/api/auth/logout", description: "Thu hồi session hiện tại và ghi audit event.", auth: true, access: "User đang hoạt động", roles: "READER, AUTHOR, REVIEWER, ADMIN", safe: false },
+        { id: "documents", method: "GET", path: "/api/documents", description: "Liệt kê tài liệu theo role và quyền xem.", auth: true, access: "VIEW_DOCUMENT", roles: "READER, AUTHOR, REVIEWER, ADMIN", safe: true },
+        { id: "createDocument", method: "POST", path: "/api/documents", description: "Tạo tài liệu Draft mới.", auth: true, access: "CREATE_DOCUMENT", roles: "AUTHOR", body: { title: "Tiêu đề tài liệu", description: "", content: "Nội dung", category: "Vận hành", tags: [] }, safe: false },
+        { id: "document", method: "GET", path: "/api/documents/{document_id}", description: "Lấy chi tiết tài liệu nếu role và trạng thái cho phép.", auth: true, access: "VIEW_DOCUMENT + phạm vi tài liệu", roles: "READER: Published · AUTHOR: tài liệu của mình hoặc Published · REVIEWER/ADMIN: tất cả", params: ["document_id"], safe: true },
+        { id: "editDocument", method: "PATCH", path: "/api/documents/{document_id}", description: "Cập nhật bản Draft/Rejected của Author sở hữu.", auth: true, access: "EDIT_DOCUMENT + chủ sở hữu + trạng thái hợp lệ", roles: "AUTHOR", params: ["document_id"], body: { title: "Tiêu đề cập nhật", description: "", content: "Nội dung cập nhật", category: "Vận hành", tags: [] }, safe: false },
+        { id: "submitReview", method: "POST", path: "/api/documents/{document_id}/review", description: "Gửi tài liệu của Author vào luồng duyệt.", auth: true, access: "SUBMIT_REVIEW + điều kiện trạng thái", roles: "AUTHOR", params: ["document_id"], safe: false },
+        { id: "publish", method: "POST", path: "/api/documents/{document_id}/publish", description: "Xuất bản tài liệu đã được duyệt và tạo version.", auth: true, access: "PUBLISH_DOCUMENT + trạng thái Approved", roles: "ADMIN", params: ["document_id"], safe: false },
+        { id: "versions", method: "GET", path: "/api/documents/{document_id}/versions", description: "Đọc lịch sử version của tài liệu.", auth: true, access: "READ_VERSION_HISTORY", roles: "REVIEWER, ADMIN", params: ["document_id"], safe: true },
+        { id: "reviews", method: "GET", path: "/api/reviews", description: "Liệt kê review request đang chờ xử lý.", auth: true, access: "READ_REVIEW_QUEUE", roles: "REVIEWER, ADMIN", safe: true },
+        { id: "decideReview", method: "POST", path: "/api/reviews/{review_id}/{decision}", description: "Approve hoặc reject review; reject cần reason.", auth: true, access: "APPROVE_REVIEW hoặc REJECT_REVIEW", roles: "REVIEWER, ADMIN", params: ["review_id", "decision"], body: { reason: "Lý do từ chối (chỉ dùng khi decision là reject)" }, safe: false },
+        { id: "audit", method: "GET", path: "/api/audit", description: "Đọc tối đa 200 audit events gần nhất.", auth: true, access: "READ_AUDIT", roles: "ADMIN", safe: true },
+        { id: "aiAsk", method: "POST", path: "/api/ai/ask", description: "Tìm từ khóa trong tài liệu Published, xếp hạng và trả excerpt cùng sources.", auth: true, access: "ASK_AI", roles: "READER, AUTHOR, REVIEWER, ADMIN", body: { question: "Nhập câu hỏi tìm kiếm tài liệu" }, safe: false }
+      ];
+
+      const pages = [...document.querySelectorAll(".page")];
+      const navLinks = [...document.querySelectorAll(".nav a")];
+      const roleCapabilities = {
+        READER: ["VIEW_DOCUMENT", "SEARCH_DOCUMENTS", "ASK_AI"],
+        AUTHOR: ["VIEW_DOCUMENT", "SEARCH_DOCUMENTS", "ASK_AI", "CREATE_DOCUMENT", "EDIT_DOCUMENT", "SUBMIT_REVIEW"],
+        REVIEWER: ["VIEW_DOCUMENT", "SEARCH_DOCUMENTS", "ASK_AI", "READ_REVIEW_QUEUE", "APPROVE_REVIEW", "REJECT_REVIEW", "READ_VERSION_HISTORY"],
+        ADMIN: ["VIEW_DOCUMENT", "SEARCH_DOCUMENTS", "ASK_AI", "READ_REVIEW_QUEUE", "APPROVE_REVIEW", "REJECT_REVIEW", "PUBLISH_DOCUMENT", "READ_VERSION_HISTORY", "MANAGE_USERS", "READ_AUDIT"]
+      };
+      const flowSteps = [
+        ["Frontend", "Gửi thao tác của người dùng tới địa chỉ API. Dashboard này là trang HTML độc lập được FastAPI phục vụ."],
+        ["HTTP Request", "Request mang method, path, headers và có thể có JSON body. Request ghi dữ liệu chỉ gửi sau khi người dùng xác nhận."],
+        ["FastAPI Router", "Route phù hợp tiếp nhận request; route nghiệp vụ parse/validate đầu vào và trả response theo endpoint."],
+        ["Authentication / Authorization", "Các route bảo vệ kiểm tra Bearer token/session rồi đối chiếu role với quyền cần thiết. Health và login không yêu cầu token."],
+        ["Nghiệp vụ / PostgreSQL", "Handler thực hiện quy tắc nghiệp vụ và gọi PostgresStore khi cần dữ liệu. Không phải request nào cũng cần truy vấn DB."],
+        ["HTTP Response", "FastAPI trả JSON/status. Lỗi API được chuẩn hóa; middleware đặt cache-control cho đường dẫn /api/."]
+      ];
+      let accessToken = "";
+      let activeUser = null;
+
+      const $ = (selector) => document.querySelector(selector);
+      const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (character) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+      })[character]);
+      const showPage = (name) => {
+        const selected = pages.find((page) => page.id === `page-${name}`) || pages[0];
+        pages.forEach((page) => page.classList.toggle("active", page === selected));
+        navLinks.forEach((link) => link.classList.toggle("active", link.dataset.page === selected.id.replace("page-", "")));
+        $("#top-title").textContent = selected.dataset.title;
+        history.replaceState(null, "", `#${selected.id.replace("page-", "")}`);
+        if (selected.id === "page-audit") renderAuditPrompt();
+      };
+      const setEndpoint = (id) => {
+        const route = routes.find((item) => item.id === id);
+        if (!route) return;
+        $("#endpoint-select").value = route.id;
+        $("#endpoint-display").textContent = `${route.method}  ${route.path}`;
+        $("#body-field").hidden = !route.body || route.id === "login";
+        $("#request-body").value = route.body ? JSON.stringify(route.body, null, 2) : "";
+        const fields = $("#path-fields");
+        fields.replaceChildren();
+        if (route.id === "login") {
+          for (const [name, type] of [["email", "email"], ["password", "password"]]) {
+            const wrapper = document.createElement("div");
+            wrapper.className = "field";
+            const label = document.createElement("label");
+            label.htmlFor = `explorer-login-${name}`;
+            label.textContent = name === "email" ? "Email" : "Mật khẩu";
+            const input = document.createElement("input");
+            input.id = `explorer-login-${name}`;
+            input.type = type;
+            input.autocomplete = name === "email" ? "username" : "current-password";
+            input.placeholder = name === "email" ? "Email tài khoản" : "Mật khẩu local";
+            wrapper.append(label, input);
+            fields.append(wrapper);
+          }
+        }
+        for (const parameter of route.params || []) {
+          const wrapper = document.createElement("div");
+          wrapper.className = "field";
+          const label = document.createElement("label");
+          label.htmlFor = `path-${parameter}`;
+          label.textContent = parameter;
+          const input = document.createElement("input");
+          input.id = `path-${parameter}`;
+          input.dataset.pathParameter = parameter;
+          input.placeholder = `Nhập ${parameter}`;
+          wrapper.append(label, input);
+          fields.append(wrapper);
+        }
+        $("#request-hint").textContent = route.auth && !accessToken
+          ? "Endpoint này cần Bearer token. Đăng nhập tại mục Xác thực hoặc gửi request để xem lỗi 401 thực tế."
+          : route.safe ? "Đây là request đọc dữ liệu; chỉ gửi khi bạn bấm nút." : "Request này có thể ghi dữ liệu/session. Dashboard sẽ yêu cầu bạn xác nhận trước khi gửi.";
+      };
+      const jsonForDisplay = (data, route) => {
+        const safeData = data && typeof data === "object" ? structuredClone(data) : data;
+        if (route.id === "login" && safeData && typeof safeData === "object" && "accessToken" in safeData) {
+          safeData.accessToken = "[ẨN — token chỉ lưu trong bộ nhớ trang]";
+        }
+        return JSON.stringify(safeData, null, 2);
+      };
+      const requestApi = async (route, path, body, options = {}) => {
+        const headers = { Accept: "application/json" };
+        if (body !== undefined) headers["Content-Type"] = "application/json";
+        if (route.auth && accessToken) headers.Authorization = `Bearer ${accessToken}`;
+        const response = await fetch(path, {
+          method: route.method,
+          headers,
+          ...(body === undefined ? {} : { body: JSON.stringify(body) })
+        });
+        const responseText = await response.text();
+        let payload = null;
+        if (responseText) {
+          try { payload = JSON.parse(responseText); }
+          catch { payload = responseText; }
+        }
+        if (route.id === "login" && response.ok && payload && typeof payload.accessToken === "string") {
+          accessToken = payload.accessToken;
+          activeUser = payload.user || null;
+          updateSessionView();
+        }
+        if (route.id === "logout" && response.ok) {
+          accessToken = "";
+          activeUser = null;
+          updateSessionView();
+        }
+        $("#response-status").textContent = `${response.status} ${response.statusText || ""}`.trim();
+        $("#response-status").className = `tag ${response.ok ? "open" : ""}`;
+        $("#response-message").textContent = `${route.method} ${path} · ${response.ok ? "Request thành công" : "Backend trả lỗi"}`;
+        $("#response-body").textContent = response.status === 204 ? "(Response không có body — HTTP 204)" : jsonForDisplay(payload, route) || "(Response rỗng)";
+        if (route.id === "health") updateHealth(response.ok, payload);
+        if (route.id === "audit") renderAudit(response, payload);
+        if (options.fromLogin) {
+          $("#session-message").textContent = response.ok
+            ? `Đã đăng nhập${activeUser ? `: ${activeUser.displayName} · ${activeUser.role}` : ""}. Token được ẩn và chỉ giữ trong bộ nhớ của trang.`
+            : `Đăng nhập thất bại: ${payload?.error?.message || response.statusText || "Lỗi request"}`;
+          $("#session-message").className = `notice section-gap${response.ok ? "" : " error"}`;
+        }
+        return { response, payload };
+      };
+      const updateHealth = (ok, payload) => {
+        const value = ok && payload?.status === "ok" ? "Hoạt động" : "Không khả dụng";
+        $("#health-value").textContent = value;
+        $("#health-value").style.color = ok ? "var(--green)" : "var(--red)";
+        $("#health-note").textContent = ok ? "GET /api/health trả status: ok" : `Health check thất bại${payload?.error?.message ? `: ${payload.error.message}` : ""}`;
+        $("#database-value").textContent = ok ? "Đã kiểm tra" : "Không khả dụng";
+        $("#database-value").style.color = ok ? "var(--green)" : "var(--red)";
+        $("#db-check-status").textContent = ok ? "PostgreSQL health check thành công (SELECT 1)" : "Chưa xác nhận được kết nối PostgreSQL";
+        $("#db-check-status").className = `tag ${ok ? "open" : ""}`;
+        $("#global-health").textContent = value;
+        $("#global-health").className = `health-pill ${ok ? "ok" : "error"}`;
+      };
+      const updateSessionView = () => {
+        $("#session-status").textContent = activeUser ? `${activeUser.displayName} · ${activeUser.role}` : "Chưa đăng nhập";
+        $("#session-status").className = `tag ${activeUser ? "open" : ""}`;
+        $("#logout-button").disabled = !accessToken;
+      };
+      const renderAuditPrompt = () => {
+        if ($("#audit-table-wrap").hidden) {
+          $("#audit-empty").hidden = false;
+          $("#audit-empty").textContent = accessToken
+            ? (activeUser?.role === "ADMIN" ? "Bấm “Tải Audit Log” để lấy các sự kiện thực tế từ backend." : "Đã có session, nhưng API chỉ cho ADMIN đọc audit log. Có thể thử request để nhận kết quả phân quyền thật.")
+            : "Chưa tải dữ liệu. Bấm “Tải Audit Log” để gửi request thật. Cần đăng nhập bằng role ADMIN.";
+        }
+      };
+      const renderAudit = (response, payload) => {
+        const empty = $("#audit-empty");
+        const wrapper = $("#audit-table-wrap");
+        const body = $("#audit-table");
+        body.replaceChildren();
+        if (!response.ok) {
+          wrapper.hidden = true;
+          empty.hidden = false;
+          empty.textContent = response.status === 401
+            ? "Chưa đăng nhập hoặc phiên hết hạn. Đăng nhập rồi thử tải lại."
+            : response.status === 403
+              ? "Tài khoản hiện tại không có quyền đọc Audit Log. Theo code, chỉ ADMIN có quyền READ_AUDIT."
+              : `Không thể tải Audit Log: ${payload?.error?.message || response.statusText || "Lỗi không xác định"}`;
+          return;
+        }
+        const items = Array.isArray(payload?.items) ? payload.items : [];
+        if (!items.length) {
+          wrapper.hidden = true;
+          empty.hidden = false;
+          empty.textContent = "API trả về danh sách rỗng. Hiện chưa có sự kiện Audit Log để hiển thị.";
+          return;
+        }
+        for (const item of items) {
+          const row = document.createElement("tr");
+          const actor = item.actor?.displayName || item.actorId || "System / chưa xác định";
+          const values = [
+            item.occurredAt ? new Date(item.occurredAt).toLocaleString("vi-VN") : "—",
+            actor,
+            item.action,
+            `${item.objectType || "—"} · ${item.objectId || "—"}`,
+            item.result,
+            item.id
+          ];
+          for (const value of values) {
+            const cell = document.createElement("td");
+            cell.textContent = value ?? "—";
+            row.append(cell);
+          }
+          body.append(row);
+        }
+        empty.hidden = true;
+        wrapper.hidden = false;
+      };
+      const renderRoutes = () => {
+        const body = $("#endpoint-table");
+        const select = $("#endpoint-select");
+        $("#endpoint-count").textContent = `${routes.length} endpoint xác nhận`;
+        for (const route of routes) {
+          const option = document.createElement("option");
+          option.value = route.id;
+          option.textContent = `${route.method} ${route.path}`;
+          select.append(option);
+          const row = document.createElement("tr");
+          const method = document.createElement("td");
+          const methodBadge = document.createElement("span");
+          methodBadge.className = `method ${route.method.toLowerCase()}`;
+          methodBadge.textContent = route.method;
+          method.append(methodBadge);
+          const endpoint = document.createElement("td");
+          const pick = document.createElement("button");
+          pick.type = "button";
+          pick.className = "route-pick";
+          pick.textContent = route.path;
+          pick.addEventListener("click", () => { setEndpoint(route.id); $("#page-api").scrollIntoView({ block: "start" }); });
+          endpoint.append(pick);
+          const description = document.createElement("td");
+          description.textContent = route.description;
+          const auth = document.createElement("td");
+          const authBadge = document.createElement("span");
+          authBadge.className = `tag ${route.auth ? "auth" : "open"}`;
+          authBadge.textContent = route.auth ? "Bearer" : "Không";
+          auth.append(authBadge);
+          const access = document.createElement("td");
+          access.textContent = route.roles;
+          row.append(method, endpoint, description, auth, access);
+          body.append(row);
+        }
+        setEndpoint(routes[0].id);
+      };
+      const renderRoles = () => {
+        const summaries = {
+          READER: "Đọc tài liệu đã Published; hỏi AI theo tài liệu Published.",
+          AUTHOR: "Quyền Reader, tạo tài liệu, sửa Draft/Rejected thuộc mình và gửi review.",
+          REVIEWER: "Quyền đọc tài liệu và hỏi AI; đọc hàng đợi, approve/reject và đọc version history.",
+          ADMIN: "Quyền Reviewer; xuất bản tài liệu Approved và đọc Audit Log."
+        };
+        for (const [role, permissions] of Object.entries(roleCapabilities)) {
+          const card = document.createElement("article");
+          card.className = "role-card";
+          const heading = document.createElement("h3");
+          heading.textContent = role;
+          const summary = document.createElement("p");
+          summary.textContent = summaries[role];
+          const list = document.createElement("div");
+          list.className = "permission-list";
+          for (const permission of permissions) {
+            const tag = document.createElement("span");
+            tag.className = "tag";
+            tag.textContent = permission;
+            list.append(tag);
+          }
+          card.append(heading, summary, list);
+          $("#role-grid").append(card);
+        }
+      };
+      const renderFlow = () => {
+        flowSteps.forEach(([name, description], index) => {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = `flow-step${index === 0 ? " selected" : ""}`;
+          button.innerHTML = `<span class="step-index">BƯỚC 0${index + 1}</span><span class="step-name">${escapeHtml(name)}</span>`;
+          button.addEventListener("click", () => {
+            document.querySelectorAll(".flow-step").forEach((step) => step.classList.remove("selected"));
+            button.classList.add("selected");
+            $("#flow-explanation").textContent = description;
+          });
+          $("#request-flow").append(button);
+        });
+        $("#flow-explanation").textContent = flowSteps[0][1];
+      };
+
+      navLinks.forEach((link) => link.addEventListener("click", (event) => {
+        event.preventDefault();
+        showPage(link.dataset.page);
+      }));
+      document.querySelectorAll("[data-go]").forEach((button) => button.addEventListener("click", () => {
+        showPage(button.dataset.go);
+        if (button.dataset.endpoint) setEndpoint(button.dataset.endpoint);
+      }));
+      $("#endpoint-select").addEventListener("change", (event) => setEndpoint(event.target.value));
+      $("#send-request").addEventListener("click", async () => {
+        const route = routes.find((item) => item.id === $("#endpoint-select").value);
+        if (!route) return;
+        let path = route.path;
+        for (const parameter of route.params || []) {
+          const value = $(`#path-${parameter}`).value.trim();
+          if (!value) {
+            $("#response-message").textContent = `Nhập giá trị cho ${parameter} trước khi gửi request.`;
+            return;
+          }
+          path = path.replace(`{${parameter}}`, encodeURIComponent(value));
+        }
+        let body;
+        if (route.id === "login") {
+          body = {
+            email: $("#explorer-login-email").value,
+            password: $("#explorer-login-password").value
+          };
+        } else if (route.body) {
+          try { body = JSON.parse($("#request-body").value); }
+          catch {
+            $("#response-message").textContent = "JSON body không hợp lệ; hãy sửa nội dung trước khi gửi.";
+            return;
+          }
+        }
+        if (!route.safe && !window.confirm(`Xác nhận gửi ${route.method} ${path}? Request này có thể tạo, sửa hoặc thu hồi dữ liệu/session.`)) return;
+        if (route.id === "login") $("#explorer-login-password").value = "";
+        $("#send-request").disabled = true;
+        try {
+          await requestApi(route, path, body);
+        } catch (error) {
+          $("#response-status").textContent = "Không kết nối được";
+          $("#response-status").className = "tag";
+          $("#response-message").textContent = error instanceof Error ? error.message : "Lỗi mạng không xác định";
+          $("#response-body").textContent = "Không nhận được HTTP response từ backend.";
+        } finally { $("#send-request").disabled = false; }
+      });
+      $("#login-form").addEventListener("submit", async (event) => {
+        event.preventDefault();
+        if (!window.confirm("Xác nhận gửi thông tin đăng nhập tới POST /api/auth/login? Backend sẽ tạo session nếu đăng nhập thành công.")) return;
+        const loginRoute = routes.find((route) => route.id === "login");
+        $("#session-message").textContent = "Đang gửi request đăng nhập…";
+        try {
+          await requestApi(loginRoute, loginRoute.path, {
+            email: $("#login-email").value,
+            password: $("#login-password").value
+          }, { fromLogin: true });
+        } catch (error) {
+          $("#session-message").textContent = error instanceof Error ? error.message : "Không kết nối được backend";
+          $("#session-message").className = "notice section-gap error";
+        } finally {
+          $("#login-password").value = "";
+        }
+      });
+      $("#logout-button").addEventListener("click", async () => {
+        if (!accessToken || !window.confirm("Xác nhận đăng xuất? Backend sẽ thu hồi session hiện tại.")) return;
+        const logoutRoute = routes.find((route) => route.id === "logout");
+        try { await requestApi(logoutRoute, logoutRoute.path); }
+        catch (error) {
+          $("#response-status").textContent = "Không kết nối được";
+          $("#response-message").textContent = error instanceof Error ? error.message : "Lỗi mạng";
+        }
+      });
+      $("#load-audit").addEventListener("click", async () => {
+        $("#audit-empty").hidden = false;
+        $("#audit-empty").textContent = "Đang tải dữ liệu Audit Log thật từ backend…";
+        $("#audit-table-wrap").hidden = true;
+        try { await requestApi(routes.find((route) => route.id === "audit"), "/api/audit"); }
+        catch (error) {
+          $("#audit-empty").textContent = error instanceof Error ? error.message : "Không kết nối được backend";
+        }
+      });
+      const checkHealth = async () => {
+        $("#health-value").textContent = "Đang kiểm tra…";
+        $("#database-value").textContent = "Đang xác minh…";
+        try { await requestApi(routes.find((route) => route.id === "health"), "/api/health"); }
+        catch (error) {
+          updateHealth(false, { error: { message: error instanceof Error ? error.message : "Lỗi mạng" } });
+          $("#response-message").textContent = error instanceof Error ? error.message : "Không kết nối được backend";
+        }
+      };
+      $("#refresh-health").addEventListener("click", checkHealth);
+      document.querySelectorAll("[data-check-health]").forEach((button) => button.addEventListener("click", checkHealth));
+      $("#api-origin").textContent = window.location.origin;
+      renderRoutes();
+      renderRoles();
+      renderFlow();
+      updateSessionView();
+      const initialPage = location.hash.slice(1);
+      if (initialPage) showPage(initialPage);
+      checkHealth();
+    </script>
+  </body>
+</html>

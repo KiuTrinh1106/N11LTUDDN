@@ -2,31 +2,58 @@
 
 Hệ thống quản lý tài liệu và tri thức nội bộ với workflow `Create -> Review -> Publish -> Version -> Search/Ask`. Hệ thống hỗ trợ bốn role tối thiểu: `Reader`, `Author`, `Reviewer` và `Admin`; AI chỉ sử dụng tài liệu nội bộ mà người dùng có quyền truy cập và phải trả về citation nguồn.
 
-> Trạng thái repository: baseline tài liệu và cấu hình nền. Mã nguồn runtime, schema Prisma và test implementation cần được bổ sung trước khi chạy đầy đủ ứng dụng.
+> Backend hiện dùng FastAPI + PostgreSQL; frontend phát triển bằng Vite/React. Prisma vẫn được dùng để quản lý schema, migration và dữ liệu seed.
 
 ## Stack
 
-- TypeScript + Node.js
+- Python + FastAPI cho backend
+- TypeScript + React + Vite cho frontend
 - PostgreSQL + Prisma ORM
-- Vitest cho unit/integration test
+- Vitest cho frontend/Node tooling; pytest cho backend Python
 - ESLint cho lint
 - Assistant Orchestrator qua Backend; LLM không truy cập trực tiếp Database
 
+## Repository Structure
+
+```text
+backend/
+  app/                 FastAPI application
+  tests/               Python API tests
+frontend/
+  src/app/             React application, entry point, and styles
+docs/                  Requirements, design, technical, test, and release documents
+prisma/
+  migrations/          Versioned PostgreSQL schema migrations
+  schema.prisma        Database schema
+  seed.mjs             Local demo data
+public/                Static public assets and standalone demo
+src/server/            Auth/backend integration and Vitest tests
+vault/                 Project domain knowledge and glossary
+.env.example           Safe local configuration template
+requirements.txt       Python backend dependencies
+package.json           Frontend, API, database, and quality commands
+```
+
+Generated files and local-only configuration (`.env`, `.venv`, `node_modules`, `dist`, Python caches) are excluded from Git. Commit source, migration files, tests, and safe example configuration instead.
+
 ## Quick Start
 
-Yêu cầu: Node.js 20+, npm 10+ và PostgreSQL 15+ đang chạy cục bộ.
+Yêu cầu: Python 3.10+, Node.js 20.6+, npm 10+ và PostgreSQL 15+ đang chạy cục bộ.
 
 1. Clone repository và đi vào thư mục dự án:
 
    ```bash
-   git clone <repository-url>
-   cd MIS3032
+   git clone https://github.com/KiuTrinh1106/N11LTUDDN.git
+   cd N11LTUDDN
    ```
 
-2. Cài dependency:
+2. Cài dependency frontend/tooling và tạo môi trường Python cho backend. Frontend và API cùng được quản lý bởi `package.json` ở thư mục gốc:
 
-   ```bash
-   npm install
+   ```powershell
+   npm ci
+   python -m venv .venv
+   .\.venv\Scripts\Activate.ps1
+   npm run api:install
    ```
 
 3. Tạo file môi trường cục bộ từ template. Không commit file `.env`:
@@ -41,54 +68,48 @@ Yêu cầu: Node.js 20+, npm 10+ và PostgreSQL 15+ đang chạy cục bộ.
    Copy-Item .env.example .env
    ```
 
-   Cập nhật `DATABASE_URL` bằng database PostgreSQL cục bộ. Các API key trong template là placeholder và không dùng được cho production.
+   Cập nhật `DATABASE_URL`, `AUTH_SECRET` (tối thiểu 32 ký tự) và `DEMO_PASSWORD` (tối thiểu 12 ký tự) bằng giá trị local. API key trong template chỉ là placeholder; không dùng key thật trong file mẫu hoặc commit.
 
-4. Kiểm tra Prisma schema và chạy migration:
+4. Khởi tạo schema và dữ liệu PostgreSQL:
 
    ```bash
    npm run db:generate
    npm run db:migrate
-   ```
-
-5. Nạp dữ liệu mẫu dành cho local development:
-
-   ```bash
    npm run db:seed
    ```
 
-6. Chạy kiểm tra chất lượng trước khi mở môi trường phát triển:
+5. Chạy backend và frontend trong hai cửa sổ PowerShell riêng:
 
    ```bash
-   npm run lint
-   npm run typecheck
-   npm test
+   # Terminal 1 - FastAPI, http://127.0.0.1:3000
+   npm run dev:api
    ```
 
-7. Chạy development server:
-
    ```bash
+   # Terminal 2 - Vite, http://localhost:5173
    npm run dev
    ```
 
-   Mặc định server dùng `PORT=3000`. Khi implementation runtime được bổ sung, mở `http://localhost:3000`.
-
-> Repository hiện chưa có `prisma/schema.prisma`, entrypoint runtime hoặc test implementation. Vì vậy bước 4-7 chỉ chạy hoàn chỉnh sau khi các module implementation tương ứng được thêm vào; đây là giới hạn hiện tại của baseline.
+   Backend Monitoring Dashboard được FastAPI phục vụ tại `http://127.0.0.1:3000/`. Vite chuyển các request `/api` sang FastAPI tại cổng 3000. Kiểm tra backend bằng `http://127.0.0.1:3000/api/health`.
 
 ## Commands
 
-| Command                  | Mục đích                                           |
-| ------------------------ | -------------------------------------------------- |
-| `npm run dev`            | Chạy development server với file entry TypeScript. |
-| `npm run build`          | Type-check và build TypeScript vào `dist/`.        |
-| `npm run lint`           | Chạy ESLint và fail nếu còn warning.               |
-| `npm run typecheck`      | Chạy TypeScript compiler không phát sinh output.   |
-| `npm test`               | Chạy Vitest một lần ở chế độ CI.                   |
-| `npm run test:watch`     | Chạy Vitest ở chế độ watch khi phát triển.         |
-| `npm run db:generate`    | Sinh Prisma Client.                                |
-| `npm run db:migrate`     | Apply migration cho môi trường local/deploy.       |
-| `npm run db:migrate:dev` | Tạo và apply migration trong development.          |
-| `npm run db:seed`        | Chạy seed script đã cấu hình trong Prisma.         |
-| `npm run check`          | Chạy lint, typecheck và test liên tiếp.            |
+| Command                  | Mục đích                                                       |
+| ------------------------ | -------------------------------------------------------------- |
+| `npm run api:install`    | Cài dependencies backend từ `requirements.txt`.                |
+| `npm run dev:api`        | Chạy FastAPI bằng Uvicorn ở cổng 3000, tự reload khi sửa code. |
+| `npm run start`          | Chạy FastAPI ở chế độ production.                              |
+| `npm run dev`               | Chạy Vite frontend trong `frontend/` ở cổng 5173.              |
+| `npm run build`          | Type-check và build frontend vào `dist/`.                      |
+| `npm run lint`           | Chạy ESLint và fail nếu còn warning.                           |
+| `npm run typecheck`      | Chạy TypeScript compiler không phát sinh output.               |
+| `npm test`               | Chạy Vitest một lần ở chế độ CI.                               |
+| `npm run test:watch`     | Chạy Vitest ở chế độ watch khi phát triển.                     |
+| `npm run db:generate`    | Sinh Prisma Client phục vụ migration/seed.                     |
+| `npm run db:migrate`     | Apply migration cho môi trường local/deploy.                   |
+| `npm run db:migrate:dev` | Tạo và apply migration trong development.                      |
+| `npm run db:seed`        | Nạp dữ liệu demo bằng Prisma.                                  |
+| `npm run check`          | Chạy lint, typecheck và test liên tiếp.                        |
 
 ## Testing and Quality Gate
 
@@ -102,6 +123,12 @@ npm run build
 ```
 
 Các test quan trọng cần bao phủ permission-aware retrieval, chuyển trạng thái `Draft -> Reviewing -> Approved/Rejected -> Published`, chỉ một current version, citation đúng nguồn, Structured Tool Calls hợp lệ và AuditEvent cho `Create`, `Edit`, `Review`, `Approve`, `Publish`, `Ask AI`.
+
+## GitHub Contribution Workflow
+
+- Mỗi thành viên làm việc trên branch riêng, commit phần việc do mình thực hiện với message mô tả rõ thay đổi, sau đó mở Pull Request để review.
+- Không tạo commit/PR thay người khác hoặc ghi contribution chưa có thật. Trước khi nộp, bổ sung URL repository GitHub thật và liên kết PR/commit của từng thành viên trong [hướng dẫn nộp bài](docs/08-release/final-submission-guide.md).
+- Chỉ đẩy các file cần thiết; không `git add .env`, credential, API key, `.venv`, `node_modules` hoặc build output.
 
 ## Deploy
 
@@ -119,9 +146,10 @@ Các test quan trọng cần bao phủ permission-aware retrieval, chuyển tr�
    npm run db:migrate
    ```
 
-4. Khởi động process production:
+4. Cài dependencies Python và khởi động backend production:
 
    ```bash
+   python -m pip install -r requirements.txt
    npm run start
    ```
 
@@ -136,7 +164,6 @@ Các test quan trọng cần bao phủ permission-aware retrieval, chuyển tr�
 
 ## Known Limitations
 
-- Stack runtime, API contract implementation, Prisma schema và migrations chưa có trong repository baseline.
 - Auth provider và mô hình RBAC/ABAC chi tiết chưa được chốt; hiện chỉ quy định bốn role tối thiểu.
 - LLM provider, model, prompt version và Q&A benchmark chưa được cấu hình thật.
 - VoiceControl không thuộc MVP text flow đã nghiệm thu; nếu bổ sung phải có text fallback.
