@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import hmac
+import io
 import json
 import logging
 import os
@@ -10,21 +11,31 @@ import re
 import secrets
 import time
 import uuid
+import zipfile
 from collections.abc import Callable, Mapping
 from contextlib import closing
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Protocol
-from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
+from urllib.parse import parse_qsl, quote, urlencode, urlsplit, urlunsplit
+from xml.etree import ElementTree
 
 from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
+from starlette.datastructures import UploadFile
 
 logger = logging.getLogger(__name__)
 
 SESSION_SECONDS_DEFAULT = 86_400
 MAX_BODY_BYTES = 256 * 1024
+MAX_UPLOAD_BYTES = 10 * 1024 * 1024
+MAX_EXTRACTED_TEXT = 1_000_000
+UPLOAD_TYPES = {
+    ".pdf": "application/pdf",
+    ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ".txt": "text/plain; charset=utf-8",
+}
 LOGIN_WINDOW_SECONDS = 15 * 60
 LOGIN_MAX_FAILURES = 5
 ROLES: dict[str, frozenset[str]] = {
@@ -78,6 +89,7 @@ class Store(Protocol):
     def record_audit(self, event: dict[str, Any]) -> None: ...
     def list_documents(self, role: str, actor_id: str) -> list[dict[str, Any]]: ...
     def create_document(self, data: dict[str, Any]) -> dict[str, Any]: ...
+    def get_document_attachment(self, document_id: str) -> dict[str, Any] | None: ...
     def update_document_draft(self, data: dict[str, Any]) -> dict[str, Any]: ...
     def submit_document_for_review(self, document_id: str, actor_id: str) -> dict[str, Any]: ...
     def find_document_by_id(self, document_id: str) -> dict[str, Any] | None: ...
@@ -239,6 +251,65 @@ def _valid_document_input(body: Any) -> bool:
             )
         )
     )
+
+
+def _extract_uploaded_text(filename: str, content: bytes) -> tuple[str, str]:
+    extension = Path(filename).suffix.lower()
+    media_type = UPLOAD_TYPES.get(extension)
+    if media_type is None:
+        raise ApiError(415, "UNSUPPORTED_FILE_TYPE", "Only PDF, DOCX and TXT files are supported")
+    if not content:
+        raise ApiError(400, "EMPTY_FILE", "The uploaded file is empty")
+
+    if extension == ".txt":
+        try:
+            text = content.decode("utf-8-sig")
+        except UnicodeDecodeError:
+            raise ApiError(400, "INVALID_TEXT_FILE", "TXT files must use UTF-8 encoding") from None
+    elif extension == ".docx":
+        try:
+            with zipfile.ZipFile(io.BytesIO(content)) as archive:
+                document_info = archive.getinfo("word/document.xml")
+                if document_info.file_size > MAX_EXTRACTED_TEXT * 4:
+                    raise ApiError(413, "EXTRACTED_TEXT_TOO_LARGE", "The extracted document is too large")
+                document_xml = archive.read(document_info)
+            root = ElementTree.fromstring(document_xml)
+        except ApiError:
+            raise
+        except (KeyError, zipfile.BadZipFile, ElementTree.ParseError):
+            raise ApiError(400, "INVALID_DOCX_FILE", "The DOCX file is invalid or unreadable") from None
+        text = "\n".join(
+            "".join(node.text or "" for node in paragraph.iter("{http://schemas.openxmlformats.org/wordprocessingml/2006/main}t"))
+            for paragraph in root.iter("{http://schemas.openxmlformats.org/wordprocessingml/2006/main}p")
+        )
+    else:
+        from pypdf import PdfReader
+        from pypdf.errors import PdfReadError
+
+        try:
+            reader = PdfReader(io.BytesIO(content), strict=True)
+            if reader.is_encrypted:
+                raise ApiError(400, "ENCRYPTED_PDF", "Password-protected PDF files are not supported")
+            extracted_pages = []
+            extracted_length = 0
+            for page in reader.pages:
+                page_text = page.extract_text() or ""
+                extracted_length += len(page_text)
+                if extracted_length > MAX_EXTRACTED_TEXT:
+                    raise ApiError(413, "EXTRACTED_TEXT_TOO_LARGE", "The extracted document is too large")
+                extracted_pages.append(page_text)
+            text = "\n".join(extracted_pages)
+        except ApiError:
+            raise
+        except (PdfReadError, ValueError, OSError):
+            raise ApiError(400, "INVALID_PDF_FILE", "The PDF file is invalid or unreadable") from None
+
+    text = text.strip()
+    if len(text) > MAX_EXTRACTED_TEXT:
+        raise ApiError(413, "EXTRACTED_TEXT_TOO_LARGE", "The extracted document is too large")
+    if not text:
+        raise ApiError(400, "NO_EXTRACTABLE_TEXT", "No text was found in the file; scanned PDFs are not supported")
+    return text, media_type
 
 
 async def _read_json(request: Request) -> Any:
@@ -433,6 +504,12 @@ class PostgresStore:
         )
         latest_review = PostgresStore._dict_row(cursor, cursor.fetchone())
         document["reviewRequests"] = [] if latest_review is None else [latest_review]
+        cursor.execute(
+            """SELECT filename, media_type AS "mediaType", created_at AS "createdAt"
+               FROM document_attachments WHERE document_id = %s""",
+            (document_id,),
+        )
+        document["attachment"] = PostgresStore._dict_row(cursor, cursor.fetchone())
         document["author"] = {"displayName": document.pop("authorDisplayName")}
         return document
 
@@ -489,6 +566,21 @@ class PostgresStore:
                     data["actorId"],
                 ),
             )
+            attachment = data.get("attachment")
+            if attachment is not None:
+                cursor.execute(
+                    """INSERT INTO document_attachments
+                       (id, document_id, filename, media_type, content, uploaded_by)
+                       VALUES (%s::uuid, %s, %s, %s, %s, %s::uuid)""",
+                    (
+                        str(uuid.uuid4()),
+                        document_id,
+                        attachment["filename"],
+                        attachment["mediaType"],
+                        attachment["content"],
+                        data["actorId"],
+                    ),
+                )
             self._audit(
                 cursor,
                 {
@@ -502,6 +594,13 @@ class PostgresStore:
             return self._load_document(cursor, document_id) or {}
 
         return self._transaction(operation)
+
+    def get_document_attachment(self, document_id: str) -> dict[str, Any] | None:
+        return self._query_one(
+            """SELECT filename, media_type AS "mediaType", content
+               FROM document_attachments WHERE document_id = %s""",
+            (document_id,),
+        )
 
     def update_document_draft(self, data: dict[str, Any]) -> dict[str, Any]:
         document_id, actor_id = data["documentId"], data["actorId"]
@@ -828,7 +927,11 @@ def create_app(
     @app.get("/", include_in_schema=False)
     async def backend_dashboard() -> FileResponse:
         if frontend_index is not None:
-            return FileResponse(frontend_index, media_type="text/html")
+            return FileResponse(
+                frontend_index,
+                media_type="text/html",
+                headers={"Cache-Control": "no-store, no-cache, must-revalidate"},
+            )
         return await dashboard_file()
 
     @app.get("/backend-dashboard", include_in_schema=False)
@@ -972,6 +1075,95 @@ def create_app(
                 "category": body["category"].strip(),
                 "tags": list(dict.fromkeys(tag.strip() for tag in body.get("tags", []) if tag.strip())),
             }
+        )
+
+    @app.post("/api/documents/upload", status_code=201)
+    async def create_document_from_file(request: Request) -> Any:
+        actor, _ = await current_identity(request)
+        if actor is None:
+            raise unauthenticated()
+        if not _has_permission(actor["role"], "CREATE_DOCUMENT"):
+            backend_store.record_audit(
+                {
+                    "actorId": actor["id"],
+                    "action": "CREATE_DOCUMENT",
+                    "objectType": "DOCUMENT",
+                    "objectId": "new",
+                    "result": "DENIED",
+                }
+            )
+            raise forbidden("Only Authors can create documents")
+
+        async with request.form(max_files=1, max_fields=10, max_part_size=MAX_BODY_BYTES) as form:
+            upload = form.get("file")
+            if not isinstance(upload, UploadFile):
+                raise ApiError(400, "FILE_REQUIRED", "Choose a PDF, DOCX or TXT file to upload")
+            filename = (upload.filename or "").replace("\\", "/").rsplit("/", 1)[-1].strip()
+            if not filename or filename in {".", ".."}:
+                raise ApiError(400, "INVALID_FILENAME", "The uploaded file must have a valid filename")
+            content = await upload.read(MAX_UPLOAD_BYTES + 1)
+            if len(content) > MAX_UPLOAD_BYTES:
+                raise ApiError(413, "FILE_TOO_LARGE", "Files must be 10 MB or smaller")
+            extracted_text, media_type = _extract_uploaded_text(filename, content)
+
+            tags_value = form.get("tags", "")
+            body = {
+                "title": form.get("title"),
+                "description": form.get("description", ""),
+                "content": extracted_text,
+                "category": form.get("category"),
+                "tags": tags_value.split(",") if isinstance(tags_value, str) else tags_value,
+            }
+            if not _valid_document_input(body):
+                raise ApiError(
+                    400,
+                    "VALIDATION_ERROR",
+                    "A valid title, category, description and tag list are required",
+                )
+            return backend_store.create_document(
+                {
+                    "actorId": actor["id"],
+                    "title": body["title"].strip(),
+                    "description": body["description"].strip(),
+                    "content": body["content"],
+                    "category": body["category"].strip(),
+                    "tags": list(dict.fromkeys(tag.strip() for tag in body["tags"] if tag.strip())),
+                    "attachment": {
+                        "filename": filename,
+                        "mediaType": media_type,
+                        "content": content,
+                    },
+                }
+            )
+
+    @app.get("/api/documents/{document_id}/attachment")
+    async def download_document_attachment(document_id: str, request: Request) -> Response:
+        actor, _ = await current_identity(request)
+        if actor is None:
+            raise unauthenticated()
+        if not _has_permission(actor["role"], "VIEW_DOCUMENT"):
+            raise forbidden()
+        document = backend_store.find_document_by_id(document_id)
+        if document is None:
+            raise ApiError(404, "DOCUMENT_NOT_FOUND", "Document was not found")
+        can_view = (
+            actor["role"] in {"ADMIN", "REVIEWER"}
+            or document["status"] == "PUBLISHED"
+            or (actor["role"] == "AUTHOR" and document["authorId"] == actor["id"])
+        )
+        if not can_view:
+            raise ApiError(404, "DOCUMENT_NOT_FOUND", "Document was not found")
+        attachment = backend_store.get_document_attachment(document_id)
+        if attachment is None:
+            raise ApiError(404, "ATTACHMENT_NOT_FOUND", "This document has no uploaded file")
+        return Response(
+            content=attachment["content"],
+            media_type=attachment["mediaType"],
+            headers={
+                "Content-Disposition": f"attachment; filename*=UTF-8''{quote(attachment['filename'], safe='')}",
+                "X-Content-Type-Options": "nosniff",
+                "Cache-Control": "private, no-store",
+            },
         )
 
     @app.post("/api/ai/ask")

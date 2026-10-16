@@ -111,6 +111,24 @@ Yêu cầu: Python 3.10+, Node.js 20.6+, npm 10+ và PostgreSQL 15+ đang chạy
 | `npm run db:seed`        | Nạp dữ liệu demo bằng Prisma.                                  |
 | `npm run check`          | Chạy lint, typecheck và test liên tiếp.                        |
 
+## Upload tài liệu
+
+Author có thể chọn tệp PDF, DOCX hoặc TXT khi tạo tài liệu. Hệ thống trích xuất
+văn bản vào nội dung bản nháp và lưu bản gốc trong PostgreSQL để người có quyền
+xem tài liệu có thể tải xuống. Giới hạn mỗi tệp là 10 MB; tệp PDF scan không có
+lớp văn bản không được OCR. Các tệp được lưu trong database, không lưu trên ổ
+đĩa tạm của web service Render.
+
+Sau khi cập nhật mã nguồn, cài lại các dependency Python và áp dụng migration:
+
+```powershell
+npm run api:install
+npm run db:migrate
+```
+
+Migration `20261015000000_document_attachments` tạo bảng lưu metadata và nội dung
+nhị phân của tệp đính kèm.
+
 ## Testing and Quality Gate
 
 Pull request phải pass các lệnh sau:

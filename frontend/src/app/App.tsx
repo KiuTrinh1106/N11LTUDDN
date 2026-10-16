@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import "./styles.css";
 /* =========================================================
    1. TYPES
@@ -34,6 +34,12 @@ interface DocumentVersion {
   publishedBy: string;
 }
 
+interface DocumentAttachment {
+  filename: string;
+  mediaType: string;
+  createdAt: string;
+}
+
 interface KnowledgeDocument {
   id: string;
   reviewId: string | null;
@@ -49,6 +55,7 @@ interface KnowledgeDocument {
   updatedAt: string;
   reviewerComment: string;
   versions: DocumentVersion[];
+  attachment: DocumentAttachment | null;
 }
 
 interface AuditRecord {
@@ -107,6 +114,7 @@ interface ApiDocument {
   author: { displayName: string };
   reviewRequests: { id: string }[];
   versions: ApiVersion[];
+  attachment: DocumentAttachment | null;
 }
 
 interface ApiAuditEvent {
@@ -126,13 +134,14 @@ async function apiRequest<T>(
   const token = sessionStorage.getItem("kms-token");
   let response: Response;
   try {
+    const headers = new Headers(options.headers);
+    if (options.body && !(options.body instanceof FormData)) {
+      headers.set("content-type", "application/json");
+    }
+    if (token) headers.set("authorization", `Bearer ${token}`);
     response = await fetch(path, {
       ...options,
-      headers: {
-        ...(options.body ? { "content-type": "application/json" } : {}),
-        ...(token ? { authorization: `Bearer ${token}` } : {}),
-        ...options.headers,
-      },
+      headers,
     });
   } catch {
     throw new Error("Không kết nối được backend. Hãy kiểm tra backend đang chạy tại cổng 3000.");
@@ -286,6 +295,7 @@ const fromApiDocument = (document: ApiDocument): KnowledgeDocument => ({
   createdAt: document.createdAt,
   updatedAt: document.updatedAt,
   reviewerComment: document.reviewerComment ?? "",
+  attachment: document.attachment ?? null,
   versions: document.versions.map((version) => ({
     version: version.version,
     title: version.title,
@@ -380,6 +390,8 @@ export default function App() {
   const [formContent, setFormContent] = useState("");
   const [formCategory, setFormCategory] = useState("Vận hành");
   const [formTags, setFormTags] = useState("");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [reviewComment, setReviewComment] = useState("");
   const [aiQuestion, setAiQuestion] = useState("");
@@ -610,6 +622,8 @@ export default function App() {
     setFormContent("");
     setFormCategory("Vận hành");
     setFormTags("");
+    setSelectedFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
     setReviewComment("");
   };
 
@@ -635,6 +649,7 @@ export default function App() {
     setFormContent(document.content);
     setFormCategory(document.category);
     setFormTags(document.tags.join(", "));
+    setSelectedFile(null);
     setReviewComment(document.reviewerComment);
     setScreen("create");
   };
@@ -645,8 +660,8 @@ export default function App() {
       return;
     }
 
-    if (!formTitle.trim() || !formContent.trim()) {
-      notify("Vui lòng nhập tiêu đề và nội dung tài liệu.");
+    if (!formTitle.trim() || (!selectedFile && !formContent.trim())) {
+      notify("Vui lòng nhập tiêu đề và nội dung hoặc chọn tệp tài liệu.");
       return;
     }
 
@@ -667,6 +682,18 @@ export default function App() {
           body: JSON.stringify(payload),
         });
         notify("Đã cập nhật bản nháp.");
+      } else if (selectedFile) {
+        const upload = new FormData();
+        upload.append("file", selectedFile);
+        upload.append("title", payload.title);
+        upload.append("description", payload.description);
+        upload.append("category", payload.category);
+        upload.append("tags", payload.tags.join(","));
+        await apiRequest("/api/documents/upload", {
+          method: "POST",
+          body: upload,
+        });
+        notify("Đã tạo bản nháp và lưu tệp đính kèm.");
       } else {
         await apiRequest("/api/documents", {
           method: "POST",
@@ -679,6 +706,34 @@ export default function App() {
       setScreen("knowledge");
     } catch (error) {
       notify(error instanceof Error ? error.message : "Không thể lưu tài liệu.");
+    }
+  };
+
+  const downloadAttachment = async (document: KnowledgeDocument) => {
+    const token = sessionStorage.getItem("kms-token");
+    try {
+      const response = await fetch(
+        `/api/documents/${encodeURIComponent(document.id)}/attachment`,
+        { headers: token ? { authorization: `Bearer ${token}` } : {} },
+      );
+      if (!response.ok) {
+        let message = `Không thể tải tệp (HTTP ${response.status}).`;
+        try {
+          const payload = await response.json() as { error?: { message?: string } };
+          message = payload.error?.message ?? message;
+        } catch {
+          throw new Error(message);
+        }
+        throw new Error(message);
+      }
+      const objectUrl = URL.createObjectURL(await response.blob());
+      const link = window.document.createElement("a");
+      link.href = objectUrl;
+      link.download = document.attachment?.filename ?? "attachment";
+      link.click();
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+    } catch (error) {
+      notify(error instanceof Error ? error.message : "Không thể tải tệp.");
     }
   };
 
@@ -1416,6 +1471,36 @@ export default function App() {
                   />
                 </div>
 
+                {!editingId && (
+                  <div className="form-field form-field-full">
+                    <label className="field-label" htmlFor="document-file">
+                      Tải tệp tài liệu (PDF, DOCX, TXT)
+                    </label>
+                    <input
+                      ref={fileInputRef}
+                      id="document-file"
+                      className="form-input"
+                      type="file"
+                      accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
+                      onChange={(event) => {
+                        const file = event.target.files?.[0] ?? null;
+                        if (file && file.size > 10 * 1024 * 1024) {
+                          event.target.value = "";
+                          setSelectedFile(null);
+                          notify("Tệp tải lên không được vượt quá 10 MB.");
+                          return;
+                        }
+                        setSelectedFile(file);
+                      }}
+                    />
+                    <div className="field-helper upload-helper">
+                      {selectedFile
+                        ? `${selectedFile.name} · Nội dung sẽ được trích xuất khi lưu`
+                        : "Tối đa 10 MB. Bản gốc được lưu cùng tài liệu; PDF scan chưa hỗ trợ OCR."}
+                    </div>
+                  </div>
+                )}
+
                 <div className="form-field form-field-full">
                   <label className="field-label">Nội dung tài liệu *</label>
                   <textarea
@@ -1424,9 +1509,12 @@ export default function App() {
                     onChange={(event) => setFormContent(event.target.value)}
                     placeholder="Nhập nội dung chi tiết của tài liệu..."
                     rows={14}
+                    disabled={Boolean(selectedFile)}
                   />
                   <div className="field-helper">
-                    {formContent.length} ký tự · Nội dung dạng văn bản
+                    {selectedFile
+                      ? "Nội dung sẽ được lấy từ tệp đã chọn khi lưu."
+                      : `${formContent.length} ký tự · Nội dung dạng văn bản`}
                   </div>
                 </div>
               </div>
@@ -1509,6 +1597,18 @@ export default function App() {
                         {selectedDocument.content}
                       </div>
                     </div>
+
+                    {selectedDocument.attachment && (
+                      <div className="detail-section">
+                        <h3>Tệp gốc</h3>
+                        <button
+                          className="secondary-button"
+                          onClick={() => void downloadAttachment(selectedDocument)}
+                        >
+                          Tải xuống {selectedDocument.attachment.filename}
+                        </button>
+                      </div>
+                    )}
 
                     {selectedDocument.tags.length > 0 && (
                       <div className="detail-section">

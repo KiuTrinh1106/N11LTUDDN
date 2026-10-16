@@ -39,6 +39,7 @@
 | User Flow & State Specifications       | `flow.md`, `states.md`, `state-matrix.md` | [Flow](05-design/flow.md) · [States](05-design/states.md) · Chưa có `state-matrix.md` |
 | Screen Inventory & Handoff             | `screen-inventory.md`, `handoff.md`       | Chưa có file trong repository                                                         |
 | Figma Design System & Screen Inventory | Chưa có file/URL chính thức               | [Placeholder Figma](https://figma.com/link-to-file)                                   |
+| Vai trò BA trong Giai đoạn 3 - Full Delivery | `ba-full-delivery.md`                  | [Mở artifact](03-product/ba-full-delivery.md)                                         |
 
 ## 4. Technical & Engineering
 
@@ -66,7 +67,7 @@
 | Artifact                       | ID / Tên file                                                                       | Link                                         |
 | :----------------------------- | :---------------------------------------------------------------------------------- | :------------------------------------------- |
 | AI Usage Log                   | `ai-usage-log.md` (tối thiểu 5 entries có Human Verification)                       | [Mở artifact](ai-usage-log.md)               |
-| Traceability Matrix            | `06-technical/TRACEABILITY.md` (Requirement → Story → Task → Code → Test → Release) | [Mở artifact](06-technical/TRACEABILITY.md)  |
+| Traceability Matrix            | `TRACEABILITY.md` (Requirement → Story → Task → Code → Test → Release)              | [Mở artifact](TRACEABILITY.md)               |
 | Retrospective & Metrics Report | `retrospective.md`                                                                  | Chưa có file trong repository                |
 | Decisions Log                  | `09-decisions/decisions-log.md`                                                     | [Mở artifact](09-decisions/decisions-log.md) |
 

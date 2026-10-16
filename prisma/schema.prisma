@@ -48,6 +48,7 @@ model User {
   submittedReviews ReviewRequest[] @relation("ReviewSubmitter")
   reviewedReviews  ReviewRequest[] @relation("ReviewDecider")
   auditEvents       AuditEvent[]
+  uploadedAttachments DocumentAttachment[]
 
   @@map("users")
 }
@@ -99,10 +100,25 @@ model Document {
   author          User             @relation(fields: [authorId], references: [id], onDelete: Restrict)
   reviewRequests  ReviewRequest[]
   versions        DocumentVersion[]
+  attachment      DocumentAttachment?
 
   @@index([status, updatedAt])
   @@index([authorId, status])
   @@map("documents")
+}
+
+model DocumentAttachment {
+  id         String   @id @default(uuid()) @db.Uuid
+  documentId String   @unique @map("document_id")
+  filename   String
+  mediaType  String   @map("media_type")
+  content    Bytes
+  uploadedBy String   @map("uploaded_by") @db.Uuid
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  uploader   User     @relation(fields: [uploadedBy], references: [id], onDelete: Restrict)
+
+  @@map("document_attachments")
 }
 
 model DocumentVersion {
