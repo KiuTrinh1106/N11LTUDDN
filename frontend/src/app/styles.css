@@ -1406,6 +1406,10 @@ button:disabled {
   text-align: right;
 }
 
+.upload-helper {
+  text-align: left;
+}
+
 .editor-footer {
   display: flex;
   align-items: center;

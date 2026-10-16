@@ -1,13 +1,19 @@
 from __future__ import annotations
 
+import io
+import zipfile
 from datetime import datetime, timezone
 from typing import Any
 
+import pytest
+from pypdf import PdfWriter
 from fastapi.testclient import TestClient
 
 from backend.app.main import (
+    ApiError,
     PostgresStore,
     create_app,
+    _extract_uploaded_text,
     hash_password,
     read_session_token,
     sign_session,
@@ -38,6 +44,7 @@ class FakeStore:
         self.users["inactive"]["email"] = "inactive@example.test"
         self.sessions: dict[str, dict[str, Any]] = {}
         self.documents: dict[str, dict[str, Any]] = {}
+        self.attachments: dict[str, dict[str, Any]] = {}
         self.reviews: dict[str, dict[str, Any]] = {}
         self.audits: list[dict[str, Any]] = []
         self.next_document = 1
@@ -96,8 +103,17 @@ class FakeStore:
             "authorId": data["actorId"],
             "versions": [],
             "reviewRequests": [],
+            "attachment": None,
             "author": {"displayName": self.find_user_by_id(data["actorId"])["displayName"]},
         }
+        attachment = data.get("attachment")
+        if attachment is not None:
+            self.attachments[document_id] = dict(attachment)
+            document["attachment"] = {
+                "filename": attachment["filename"],
+                "mediaType": attachment["mediaType"],
+                "createdAt": datetime.now(timezone.utc),
+            }
         self.documents[document_id] = document
         self.record_audit(
             {
@@ -109,6 +125,9 @@ class FakeStore:
             }
         )
         return document
+
+    def get_document_attachment(self, document_id: str) -> dict[str, Any] | None:
+        return self.attachments.get(document_id)
 
     def update_document_draft(self, data: dict[str, Any]) -> dict[str, Any]:
         document = self.documents.get(data["documentId"])
@@ -370,6 +389,79 @@ def test_role_restrictions_and_author_document_creation() -> None:
     assert created.json()["tags"] == ["warehouse"]
     assert created.json()["status"] == "DRAFT"
     assert client.get(f"/api/documents/{created.json()['id']}", headers=reader).status_code == 404
+
+
+def test_author_can_upload_file_and_only_authorized_users_can_download_it() -> None:
+    store = FakeStore()
+    client = _client(store)
+    author = {"Authorization": f"Bearer {_token(client, 'AUTHOR')}"}
+    reader = {"Authorization": f"Bearer {_token(client, 'READER')}"}
+    upload = client.post(
+        "/api/documents/upload",
+        headers=author,
+        data={
+            "title": "Receiving guide",
+            "description": "Warehouse procedure",
+            "category": "Operations",
+            "tags": "warehouse, receiving",
+        },
+        files={"file": ("receiving.txt", b"Check every delivered item.", "text/plain")},
+    )
+
+    assert upload.status_code == 201
+    document = upload.json()
+    assert document["content"] == "Check every delivered item."
+    assert document["attachment"]["filename"] == "receiving.txt"
+    assert client.get(
+        f"/api/documents/{document['id']}/attachment",
+        headers=author,
+    ).content == b"Check every delivered item."
+    assert client.get(
+        f"/api/documents/{document['id']}/attachment",
+        headers=reader,
+    ).status_code == 404
+
+    unsupported = client.post(
+        "/api/documents/upload",
+        headers=author,
+        data={"title": "Unsupported", "category": "Operations"},
+        files={"file": ("guide.exe", b"not supported", "application/octet-stream")},
+    )
+    assert unsupported.status_code == 415
+
+
+def test_only_authors_can_upload_files() -> None:
+    client = _client(FakeStore())
+    reader = {"Authorization": f"Bearer {_token(client, 'READER')}"}
+    denied = client.post(
+        "/api/documents/upload",
+        headers=reader,
+        data={"title": "Policy", "category": "Operations"},
+        files={"file": ("policy.txt", b"Policy text", "text/plain")},
+    )
+    assert denied.status_code == 403
+
+
+def test_extract_uploaded_docx_text() -> None:
+    document_xml = b"""<?xml version="1.0" encoding="UTF-8"?>
+        <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:body><w:p><w:r><w:t>Receiving checklist</w:t></w:r></w:p></w:body>
+        </w:document>"""
+    docx_buffer = io.BytesIO()
+    with zipfile.ZipFile(docx_buffer, "w") as archive:
+        archive.writestr("word/document.xml", document_xml)
+
+    extracted, media_type = _extract_uploaded_text("checklist.docx", docx_buffer.getvalue())
+    assert extracted == "Receiving checklist"
+    assert media_type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+
+    writer = PdfWriter()
+    writer.add_blank_page(width=72, height=72)
+    scanned_pdf = io.BytesIO()
+    writer.write(scanned_pdf)
+    with pytest.raises(ApiError, match="No text was found") as error:
+        _extract_uploaded_text("scanned.pdf", scanned_pdf.getvalue())
+    assert error.value.code == "NO_EXTRACTABLE_TEXT"
 
 
 def test_document_review_approval_publish_and_version_history() -> None:
