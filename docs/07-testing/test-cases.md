@@ -1,5 +1,22 @@
 # Test Cases
 
+## Business workflow state transitions
+
+The cases below define the expected business behavior. An `Automation status` of `Planned` means the case is not yet evidence of a passing implementation.
+
+| ID | Scenario | Expected result | Requirement | Automation status |
+| --- | --- | --- | --- | --- |
+| TC-WF-01 | Author creates a document. | State is `Draft`; no official version exists. | REQ-FR-02, REQ-FR-06 | Creation is covered; explicit no-version assertion planned. |
+| TC-WF-02 | Author submits an editable draft, then retries submission. | First submission creates one pending request and changes state to `Reviewing`; retry does not create a duplicate. | REQ-FR-06, REQ-FR-07 | Happy path partly covered; duplicate retry planned. |
+| TC-WF-03 | Reviewer/Admin opens the review queue. | Pending requests show the document, draft/version, submitter and review status; unauthorized role is denied. | REQ-FR-08 | Planned. |
+| TC-WF-04 | Reviewer/Admin approves a pending request. | State becomes `Approved`; actor and time are recorded; no official version is created yet. | REQ-FR-09, REQ-FR-11 | Happy path partly covered; no-version and audit assertions planned. |
+| TC-WF-05 | Reviewer/Admin rejects a pending request. | A missing reason is rejected; a valid reason is stored with actor and time and the draft remains available. | REQ-FR-09, REQ-FR-11 | Missing-reason test exists; stored reason/actor/time assertion planned. |
+| TC-WF-06 | Author edits and resubmits a rejected draft. | The same draft is retained, moves through review again, and no official version is added before publish. | REQ-FR-07, REQ-FR-11 | Planned. |
+| TC-WF-07 | Author attempts approve, reject or publish; or an authorized actor publishes a draft that is not approved. | Each action is denied with no state or version change. | REQ-FR-09, REQ-FR-10, REQ-BR-01 | Planned. |
+| TC-WF-08 | Reviewer/Admin publishes an approved draft; retry the publish command. | Exactly one official version is created and becomes current; retry does not duplicate it. | REQ-FR-10, REQ-FR-11, REQ-BR-05 | First-publish happy path exists; retry assertion planned. |
+| TC-WF-09 | A second approved draft is published for a document that already has a current version. | The later version becomes the only current version; the prior version becomes non-current. | REQ-FR-11, REQ-BR-03, REQ-BR-05 | Planned. |
+| TC-WF-10 | Search or Q&A runs after a new version is published. | Only the current published version is eligible, and only for callers with current view permission. | REQ-FR-12, REQ-FR-15, REQ-BR-02, REQ-BR-03 | Planned. |
+
 ## Version tăng tại Publish
 
 | ID                    | Scenario                                                 | Expected result                                                                                                       | Requirement          |
