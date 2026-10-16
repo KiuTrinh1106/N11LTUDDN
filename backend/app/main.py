@@ -927,7 +927,11 @@ def create_app(
     @app.get("/", include_in_schema=False)
     async def backend_dashboard() -> FileResponse:
         if frontend_index is not None:
-            return FileResponse(frontend_index, media_type="text/html")
+            return FileResponse(
+                frontend_index,
+                media_type="text/html",
+                headers={"Cache-Control": "no-store, no-cache, must-revalidate"},
+            )
         return await dashboard_file()
 
     @app.get("/backend-dashboard", include_in_schema=False)

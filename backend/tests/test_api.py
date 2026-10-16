@@ -528,6 +528,8 @@ def test_configured_frontend_is_served_with_backend_dashboard_available(
     monkeypatch.setenv("FRONTEND_DIST_DIR", str(tmp_path))
     client = _client(FakeStore())
 
-    assert client.get("/").text == "<main>Frontend</main>"
+    frontend = client.get("/")
+    assert frontend.text == "<main>Frontend</main>"
+    assert frontend.headers["cache-control"] == "no-store, no-cache, must-revalidate"
     assert client.get("/assets/app.js").text == "console.log('frontend')"
     assert "Backend" in client.get("/backend-dashboard").text
