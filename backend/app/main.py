@@ -18,6 +18,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Protocol
 from urllib.parse import parse_qsl, quote, urlencode, urlsplit, urlunsplit
+from uuid import UUID
 from xml.etree import ElementTree
 
 from fastapi import FastAPI, Request
@@ -735,9 +736,11 @@ class PostgresStore:
 
     def list_pending_reviews(self) -> list[dict[str, Any]]:
         rows = self._query_all(
-            """SELECT r.id::text AS id, r.title, r.document_id AS "documentId",
+            """SELECT r.id::text AS id, r.title, r.status::text AS status,
+                      r.document_id AS "documentId",
                       su."display_name" AS "submitterName", r.submitted_at AS "submittedAt",
-                      d.category, au."display_name" AS "authorName"
+                      d.category, d.current_version AS version,
+                      au."display_name" AS "authorName"
                FROM review_requests r
                JOIN users su ON su.id = r.submitted_by_id
                LEFT JOIN documents d ON d.id = r.document_id
@@ -748,19 +751,28 @@ class PostgresStore:
             {
                 "id": row["id"],
                 "title": row["title"],
+                "status": row["status"],
                 "documentId": row["documentId"],
                 "submittedBy": {"displayName": row["submitterName"]},
                 "submittedAt": row["submittedAt"],
                 "document": (
                     None
                     if row["category"] is None
-                    else {"category": row["category"], "author": {"displayName": row["authorName"]}}
+                    else {
+                        "category": row["category"],
+                        "version": row["version"],
+                        "author": {"displayName": row["authorName"]},
+                    }
                 ),
             }
             for row in rows
         ]
 
     def decide_review(self, data: dict[str, Any]) -> dict[str, Any]:
+        # Keep the persistence boundary defensive even when callers bypass HTTP validation.
+        if data["decision"] not in {"APPROVED", "REJECTED"}:
+            raise WorkflowError("INVALID_DECISION", "Review decision is invalid")
+
         def operation(cursor: Any) -> dict[str, Any]:
             cursor.execute(
                 """SELECT document_id AS "documentId", status::text AS status
@@ -785,14 +797,15 @@ class PostgresStore:
             if result is None:
                 raise WorkflowError("INVALID_STATE", "Review request is no longer pending")
             document_id = current["documentId"]
-            if document_id:
-                cursor.execute(
-                    """UPDATE documents SET status = %s, reviewer_comment = %s, updated_at = now()
-                       WHERE id = %s AND status = 'REVIEWING' RETURNING id""",
-                    (data["decision"], data["reason"], document_id),
-                )
-                if cursor.fetchone() is None:
-                    raise WorkflowError("INVALID_STATE", "Document is no longer in review")
+            if not document_id:
+                raise WorkflowError("INVALID_STATE", "Review request is not linked to a document")
+            cursor.execute(
+                """UPDATE documents SET status = %s, reviewer_comment = %s, updated_at = now()
+                   WHERE id = %s AND status = 'REVIEWING' RETURNING id""",
+                (data["decision"], data["reason"], document_id),
+            )
+            if cursor.fetchone() is None:
+                raise WorkflowError("INVALID_STATE", "Document is no longer in review")
             action = "APPROVE" if data["decision"] == "APPROVED" else "REJECT"
             self._audit(
                 cursor,
@@ -851,13 +864,21 @@ def _map_workflow_error(error: WorkflowError, action: str) -> ApiError:
         if action == "review":
             return ApiError(404, "REVIEW_NOT_FOUND", "Review request was not found")
         return ApiError(404, "DOCUMENT_NOT_FOUND", "Document was not found")
+    if action == "review" and error.code == "INVALID_DECISION":
+        return ApiError(400, "INVALID_DECISION", "Review decision is invalid")
     if action == "edit":
-        return ApiError(409, "DOCUMENT_NOT_EDITABLE", "Only your Draft or Rejected documents can be edited")
+        if error.code == "INVALID_STATE":
+            return ApiError(409, "DOCUMENT_NOT_EDITABLE", "Only your Draft or Rejected documents can be edited")
     if action == "submit":
-        return ApiError(409, "DOCUMENT_NOT_SUBMITTABLE", "Only your Draft or Rejected documents can be submitted")
+        if error.code == "INVALID_STATE":
+            return ApiError(409, "DOCUMENT_NOT_SUBMITTABLE", "Only your Draft or Rejected documents can be submitted")
     if action == "publish":
-        return ApiError(409, "DOCUMENT_NOT_APPROVED", "Only approved documents can be published")
-    return ApiError(409, "REVIEW_NOT_PENDING", "Review request is no longer pending")
+        if error.code == "INVALID_STATE":
+            return ApiError(409, "DOCUMENT_NOT_APPROVED", "Only approved documents can be published")
+    if action == "review" and error.code == "INVALID_STATE":
+        return ApiError(409, "REVIEW_NOT_PENDING", "Review request is no longer pending")
+    logger.error("Unexpected workflow error for %s: %s", action, error.code)
+    return ApiError(500, "INTERNAL_ERROR", "The request could not be completed")
 
 
 def create_app(
@@ -1389,23 +1410,68 @@ def create_app(
                 }
             )
             raise forbidden("You do not have permission to decide this review")
-        body = await _read_json(request)
+        # Check authorization before parsing the ID so unauthorized users cannot probe requests.
+        try:
+            normalized_review_id = str(UUID(review_id))
+        except ValueError:
+            logger.warning(
+                "Rejected review decision with invalid review ID",
+                extra={"actorId": actor["id"], "decision": decision},
+            )
+            raise ApiError(400, "INVALID_REVIEW_ID", "Review ID must be a valid UUID") from None
+        try:
+            body = await _read_json(request)
+        except ApiError as error:
+            logger.warning(
+                "Rejected invalid review decision request body",
+                extra={
+                    "actorId": actor["id"],
+                    "reviewId": normalized_review_id,
+                    "errorCode": error.code,
+                },
+            )
+            raise
         if not isinstance(body, dict):
+            logger.warning(
+                "Rejected review decision with non-object JSON body",
+                extra={"actorId": actor["id"], "decision": decision},
+            )
             raise ApiError(400, "INVALID_INPUT", "A JSON object is required")
+        # Approval takes no fields; rejection accepts only its required reason.
+        allowed_fields = {"reason"} if decision == "reject" else set()
+        if set(body) - allowed_fields:
+            logger.warning(
+                "Rejected review decision with unexpected fields",
+                extra={"actorId": actor["id"], "decision": decision},
+            )
+            raise ApiError(400, "INVALID_INPUT", "The request contains unsupported fields")
         if decision == "reject" and (
             not isinstance(body.get("reason"), str) or not body["reason"].strip()
         ):
+            logger.warning(
+                "Rejected review decision without a valid rejection reason",
+                extra={"actorId": actor["id"], "reviewId": normalized_review_id},
+            )
             raise ApiError(400, "REASON_REQUIRED", "A rejection reason is required")
         try:
             return backend_store.decide_review(
                 {
-                    "reviewId": review_id,
+                    "reviewId": normalized_review_id,
                     "reviewerId": actor["id"],
                     "decision": "APPROVED" if decision == "approve" else "REJECTED",
                     "reason": body["reason"].strip() if isinstance(body.get("reason"), str) else None,
                 }
             )
         except WorkflowError as error:
+            logger.warning(
+                "Review decision could not be applied",
+                extra={
+                    "actorId": actor["id"],
+                    "reviewId": normalized_review_id,
+                    "decision": decision,
+                    "errorCode": error.code,
+                },
+            )
             raise _map_workflow_error(error, "review") from None
 
     @app.get("/api/audit")
