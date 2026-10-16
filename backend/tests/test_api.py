@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import uuid
 import zipfile
 from datetime import datetime, timezone
 from typing import Any
@@ -164,7 +165,7 @@ class FakeStore:
         if document["authorId"] != actor_id or document["status"] not in {"DRAFT", "REJECTED"}:
             raise WorkflowError("INVALID_STATE", "Document cannot be submitted")
         document["status"] = "REVIEWING"
-        review_id = f"review-{self.next_review}"
+        review_id = str(uuid.uuid4())
         self.next_review += 1
         review = {
             "id": review_id,
@@ -230,11 +231,13 @@ class FakeStore:
                 {
                     "id": review["id"],
                     "title": review["title"],
+                    "status": review["status"],
                     "documentId": review["documentId"],
                     "submittedBy": {"displayName": submitter["displayName"]},
                     "submittedAt": review["submittedAt"],
                     "document": {
                         "category": document["category"],
+                        "version": document["currentVersion"],
                         "author": {"displayName": submitter["displayName"]},
                     },
                 }
@@ -249,6 +252,9 @@ class FakeStore:
             raise WorkflowError("NOT_FOUND", "Review not found")
         if review["status"] != "PENDING":
             raise WorkflowError("INVALID_STATE", "Review no longer pending")
+        document = self.documents.get(review["documentId"])
+        if document is None or document["status"] != "REVIEWING":
+            raise WorkflowError("INVALID_STATE", "Document is no longer in review")
         review.update(
             {
                 "status": data["decision"],
@@ -257,7 +263,6 @@ class FakeStore:
                 "reviewedAt": datetime.now(timezone.utc),
             }
         )
-        document = self.documents[review["documentId"]]
         document["status"] = data["decision"]
         document["reviewerComment"] = data["reason"]
         self.record_audit(
@@ -479,7 +484,9 @@ def test_document_review_approval_publish_and_version_history() -> None:
     submitted = client.post(f"/api/documents/{document['id']}/review", headers=author)
     assert submitted.status_code == 201
     review_id = submitted.json()["id"]
-    assert len(client.get("/api/reviews", headers=reviewer).json()["items"]) == 1
+    queued_review = client.get("/api/reviews", headers=reviewer).json()["items"][0]
+    assert queued_review["status"] == "PENDING"
+    assert queued_review["document"]["version"] == "Draft"
     approved = client.post(f"/api/reviews/{review_id}/approve", headers=reviewer, json={})
     assert approved.status_code == 200
     assert approved.json()["status"] == "APPROVED"
@@ -490,6 +497,62 @@ def test_document_review_approval_publish_and_version_history() -> None:
     answer = client.post("/api/ai/ask", headers=author, json={"question": "inventory stock"})
     assert answer.status_code == 200
     assert answer.json()["sources"][0]["id"] == document["id"]
+
+
+def test_review_queue_and_decisions_enforce_roles_and_validate_input() -> None:
+    store = FakeStore()
+    client = _client(store)
+    author_headers = {"Authorization": f"Bearer {_token(client, 'AUTHOR')}"}
+    reviewer_headers = {"Authorization": f"Bearer {_token(client, 'REVIEWER')}"}
+    reader_headers = {"Authorization": f"Bearer {_token(client, 'READER')}"}
+    admin_headers = {"Authorization": f"Bearer {_token(client, 'ADMIN')}"}
+
+    document = client.post(
+        "/api/documents",
+        headers=author_headers,
+        json={"title": "Policy", "content": "Review policy", "category": "Operations"},
+    ).json()
+    review = client.post(f"/api/documents/{document['id']}/review", headers=author_headers).json()
+    review_id = review["id"]
+
+    assert client.get("/api/reviews", headers=reader_headers).status_code == 403
+    assert client.post(
+        f"/api/reviews/{review_id}/approve", headers=author_headers, json={}
+    ).status_code == 403
+    queue = client.get("/api/reviews", headers=reviewer_headers)
+    assert queue.status_code == 200
+    assert queue.json()["items"][0]["status"] == "PENDING"
+    assert queue.json()["items"][0]["document"]["version"] == "Draft"
+
+    malformed_id = client.post(
+        "/api/reviews/not-a-uuid/approve", headers=reviewer_headers, json={}
+    )
+    assert malformed_id.status_code == 400
+    assert malformed_id.json()["error"]["code"] == "INVALID_REVIEW_ID"
+    extra_field = client.post(
+        f"/api/reviews/{review_id}/approve",
+        headers=reviewer_headers,
+        json={"reason": "Not accepted on approval"},
+    )
+    assert extra_field.status_code == 400
+    empty_reason = client.post(
+        f"/api/reviews/{review_id}/reject",
+        headers=reviewer_headers,
+        json={"reason": "   "},
+    )
+    assert empty_reason.status_code == 400
+    assert empty_reason.json()["error"]["code"] == "REASON_REQUIRED"
+
+    approved = client.post(
+        f"/api/reviews/{review_id}/approve", headers=admin_headers, json={}
+    )
+    assert approved.status_code == 200
+    assert approved.json()["reviewerId"] == store.users["ADMIN"]["id"]
+    duplicate = client.post(
+        f"/api/reviews/{review_id}/approve", headers=reviewer_headers, json={}
+    )
+    assert duplicate.status_code == 409
+    assert duplicate.json()["error"]["code"] == "REVIEW_NOT_PENDING"
 
 
 def test_review_rejection_requires_reason_and_inactive_user_cannot_login() -> None:
