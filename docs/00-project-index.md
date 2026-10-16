@@ -56,7 +56,7 @@
 | Artifact                            | ID / Tên file                         | Link                                                                                  |
 | :---------------------------------- | :------------------------------------ | :------------------------------------------------------------------------------------ |
 | Test Strategy & Test Cases          | `test-strategy.md`, `test-cases.md`   | [Test Strategy](07-testing/test-strategy.md) · [Test Cases](07-testing/test-cases.md) |
-| Bug Reports & Triage Board          | `bug-reports/BUG-001.md`              | [BUG-001](07-testing/bug-reports/BUG-001.md)                                          |
+| Bug Reports & Triage Board          | `bug-reports/BUG-001.md`, `BUG-002.md` | [BUG-001](07-testing/bug-reports/BUG-001.md) · [BUG-002](07-testing/bug-reports/BUG-002.md) |
 | Release Checklist                   | `release-checklist.md`                | [Mở artifact](08-release/release-checklist.md)                                        |
 | Staging / Production Deployment URL | Chưa triển khai                       | [Placeholder deployment](https://your-app.vercel.app)                                 |
 | Runbook & Setup Guide               | `runbook.md`, `README.md#quick-start` | [Runbook](08-release/runbook.md) · [Quick Start](../README.md#quick-start)            |

@@ -25,3 +25,4 @@ Tóm tắt các thay đổi và công việc có sử dụng AI trong dự án. 
 | 6 | Bổ sung A-09: xác minh 7 Epic, 12 User Story và 8 Task thuộc US-AI-03 đang `New`; đây chưa phải kiểm tra toàn bộ Task và không có trạng thái nào được thay đổi. |
 | 7 | Dịch `docs/ai-usage-log.md` và `docs/TRACEABILITY.md` sang tiếng Việt, giữ nguyên mã và định danh phục vụ truy vết. |
 | 8 | Kiểm tra T-404 (Task #55): có test happy path gửi Review và lấy Review Queue, nhưng thao tác đổi trạng thái trên Taiga chưa xác minh được; không ghi nhận Task là Done/Closed. |
+| 9 | Sửa RBAC Publish US-AI-07 cho Reviewer và Admin theo Vault/AC; phát hiện và ghi lỗi BUG-US07-01 tại `docs/07-testing/bug-reports/BUG-002.md`. Mã đã sửa, chờ kiểm thử xác minh. |

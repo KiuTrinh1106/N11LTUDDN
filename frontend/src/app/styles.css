@@ -1528,6 +1528,23 @@ button:disabled {
   font-size: 13px;
 }
 
+.attachment-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+
+.pdf-preview {
+  display: block;
+  width: 100%;
+  height: min(75vh, 900px);
+  min-height: 480px;
+  margin-top: 16px;
+  border: 1px solid #dfe5ee;
+  border-radius: 8px;
+  background: #f7f9fc;
+}
+
 .document-content {
   color: #566880;
   font-size: 11px;

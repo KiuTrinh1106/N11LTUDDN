@@ -59,6 +59,7 @@ ROLES: dict[str, frozenset[str]] = {
             "READ_REVIEW_QUEUE",
             "APPROVE_REVIEW",
             "REJECT_REVIEW",
+            "PUBLISH_DOCUMENT",
             "READ_VERSION_HISTORY",
         }
     ),
@@ -1345,7 +1346,7 @@ def create_app(
                     "result": "DENIED",
                 }
             )
-            raise forbidden("Only Admin can publish approved documents")
+            raise forbidden("Only Reviewers or Admins can publish approved documents")
         try:
             return backend_store.publish_document(document_id, actor["id"])
         except WorkflowError as error:

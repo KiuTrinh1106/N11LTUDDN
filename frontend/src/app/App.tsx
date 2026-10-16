@@ -249,7 +249,7 @@ const canReview = (role: Role) =>
   role === "Reviewer" || role === "Admin";
 
 const canPublish = (role: Role) =>
-  role === "Admin";
+  canReview(role);
 
 const canCreate = (role: Role) => role === "Author";
 
@@ -392,6 +392,9 @@ export default function App() {
   const [formTags, setFormTags] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
+  const [pdfPreviewLoading, setPdfPreviewLoading] = useState(false);
+  const pdfPreviewRequestRef = useRef(0);
 
   const [reviewComments, setReviewComments] = useState<Record<string, string>>({});
   const [aiQuestion, setAiQuestion] = useState("");
@@ -409,6 +412,18 @@ export default function App() {
   const selectedDocument = documents.find(
     (document) => document.id === selectedId,
   );
+
+  useEffect(() => {
+    setPdfPreviewUrl(null);
+    setPdfPreviewLoading(false);
+    pdfPreviewRequestRef.current += 1;
+  }, [selectedDocument?.id]);
+
+  useEffect(() => {
+    return () => {
+      if (pdfPreviewUrl) URL.revokeObjectURL(pdfPreviewUrl);
+    };
+  }, [pdfPreviewUrl]);
 
   useEffect(() => {
     const token = sessionStorage.getItem("kms-token");
@@ -735,6 +750,50 @@ export default function App() {
     }
   };
 
+  const previewPdfAttachment = async (document: KnowledgeDocument) => {
+    const requestId = ++pdfPreviewRequestRef.current;
+    setPdfPreviewLoading(true);
+    const token = sessionStorage.getItem("kms-token");
+
+    try {
+      const response = await fetch(
+        `/api/documents/${encodeURIComponent(document.id)}/attachment`,
+        { headers: token ? { authorization: `Bearer ${token}` } : {} },
+      );
+      if (!response.ok) {
+        let message = `Không thể mở PDF (HTTP ${response.status}).`;
+        try {
+          const payload = await response.json() as { error?: { message?: string } };
+          message = payload.error?.message ?? message;
+        } catch {
+          throw new Error(message);
+        }
+        throw new Error(message);
+      }
+
+      const objectUrl = URL.createObjectURL(await response.blob());
+      if (requestId !== pdfPreviewRequestRef.current) {
+        URL.revokeObjectURL(objectUrl);
+        return;
+      }
+      setPdfPreviewUrl(objectUrl);
+    } catch (error) {
+      if (requestId === pdfPreviewRequestRef.current) {
+        notify(error instanceof Error ? error.message : "Không thể mở PDF.");
+      }
+    } finally {
+      if (requestId === pdfPreviewRequestRef.current) {
+        setPdfPreviewLoading(false);
+      }
+    }
+  };
+
+  const closePdfPreview = () => {
+    pdfPreviewRequestRef.current += 1;
+    setPdfPreviewUrl(null);
+    setPdfPreviewLoading(false);
+  };
+
   const submitForReview = async (document: KnowledgeDocument) => {
     try {
       await apiRequest(`/api/documents/${encodeURIComponent(document.id)}/review`, {
@@ -781,7 +840,7 @@ export default function App() {
 
   const publishDocument = async (document: KnowledgeDocument) => {
     if (!canPublish(currentRole)) {
-      notify("Chỉ Admin mới có quyền xuất bản.");
+      notify("Chỉ Reviewer hoặc Admin mới có quyền xuất bản.");
       return;
     }
     try {
@@ -1605,12 +1664,40 @@ export default function App() {
                     {selectedDocument.attachment && (
                       <div className="detail-section">
                         <h3>Tệp gốc</h3>
-                        <button
-                          className="secondary-button"
-                          onClick={() => void downloadAttachment(selectedDocument)}
-                        >
-                          Tải xuống {selectedDocument.attachment.filename}
-                        </button>
+                        <div className="attachment-actions">
+                          {selectedDocument.attachment.mediaType === "application/pdf" && (
+                            <button
+                              className="secondary-button"
+                              onClick={() => {
+                                if (pdfPreviewUrl || pdfPreviewLoading) {
+                                  closePdfPreview();
+                                } else {
+                                  void previewPdfAttachment(selectedDocument);
+                                }
+                              }}
+                              disabled={pdfPreviewLoading}
+                            >
+                              {pdfPreviewLoading
+                                ? "Đang mở PDF..."
+                                : pdfPreviewUrl
+                                  ? "Đóng bản xem trước"
+                                  : "Xem PDF"}
+                            </button>
+                          )}
+                          <button
+                            className="secondary-button"
+                            onClick={() => void downloadAttachment(selectedDocument)}
+                          >
+                            Tải xuống {selectedDocument.attachment.filename}
+                          </button>
+                        </div>
+                        {pdfPreviewUrl && (
+                          <iframe
+                            className="pdf-preview"
+                            src={pdfPreviewUrl}
+                            title={`Bản xem trước ${selectedDocument.attachment.filename}`}
+                          />
+                        )}
                       </div>
                     )}
 
