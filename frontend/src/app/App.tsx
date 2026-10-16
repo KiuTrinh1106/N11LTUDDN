@@ -395,7 +395,7 @@ export default function App() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [reviewComment, setReviewComment] = useState("");
+  const [reviewComments, setReviewComments] = useState<Record<string, string>>({});
   const [aiQuestion, setAiQuestion] = useState("");
   const [aiAnswer, setAiAnswer] = useState<{
     text: string;
@@ -626,7 +626,6 @@ export default function App() {
     setFormTags("");
     setSelectedFile(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
-    setReviewComment("");
   };
 
   const startCreate = () => {
@@ -652,7 +651,6 @@ export default function App() {
     setFormCategory(document.category);
     setFormTags(document.tags.join(", "));
     setSelectedFile(null);
-    setReviewComment(document.reviewerComment);
     setScreen("create");
   };
 
@@ -756,17 +754,23 @@ export default function App() {
       notify("Không tìm thấy yêu cầu duyệt đang chờ cho tài liệu này.");
       return;
     }
-    if (decision === "reject" && !reviewComment.trim()) {
+    const reviewId = document.reviewId;
+    const reason = reviewComments[reviewId]?.trim() ?? "";
+    if (decision === "reject" && !reason) {
       notify("Vui lòng ghi rõ lý do yêu cầu chỉnh sửa.");
       return;
     }
     try {
-      await apiRequest(`/api/reviews/${encodeURIComponent(document.reviewId)}/${decision}`, {
+      await apiRequest(`/api/reviews/${encodeURIComponent(reviewId)}/${decision}`, {
         method: "POST",
-        body: JSON.stringify(decision === "reject" ? { reason: reviewComment.trim() } : {}),
+        body: JSON.stringify(decision === "reject" ? { reason } : {}),
       });
       await refreshDocuments();
-      setReviewComment("");
+      setReviewComments((previous) => {
+        const next = { ...previous };
+        delete next[reviewId];
+        return next;
+      });
       notify(decision === "approve" ? "Đã phê duyệt. Tài liệu chờ Admin xuất bản." : "Đã gửi yêu cầu chỉnh sửa cho tác giả.");
     } catch (error) {
       notify(error instanceof Error ? error.message : "Không thể xử lý yêu cầu duyệt.");
@@ -1741,7 +1745,7 @@ export default function App() {
                         <div className="review-card-title">
                           <strong>{document.title}</strong>
                           <span>
-                            {document.id} · {document.author} · {document.category}
+                            {document.id} · Version {document.version} · {document.author} · {document.category}
                           </span>
                         </div>
                         <StatusBadge status={document.status} />
@@ -1765,11 +1769,14 @@ export default function App() {
                           </label>
                           <textarea
                             className="form-input form-textarea-small"
-                            value={selectedId === document.id ? reviewComment : ""}
-                            onFocus={() => setSelectedId(document.id)}
+                            value={document.reviewId ? reviewComments[document.reviewId] ?? "" : ""}
                             onChange={(event) => {
-                              setSelectedId(document.id);
-                              setReviewComment(event.target.value);
+                              const reviewId = document.reviewId;
+                              if (!reviewId) return;
+                              setReviewComments((previous) => ({
+                                ...previous,
+                                [reviewId]: event.target.value,
+                              }));
                             }}
                             placeholder="Nhập lý do nếu cần yêu cầu chỉnh sửa..."
                             rows={2}
